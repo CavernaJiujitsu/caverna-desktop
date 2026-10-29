@@ -12,6 +12,15 @@ const AcademiesPage = lazy(
   () => import('@/features/academies/pages/academies-page'),
 )
 const LoginPage = lazy(() => import('@/features/auth/pages/login-page'))
+const ManagementPreviewPage = lazy(
+  () => import('@/features/management/pages/management-preview-page'),
+)
+const AccessDeniedPage = lazy(
+  () => import('@/features/management/pages/access-denied-page'),
+)
+const SessionExpiredPage = lazy(
+  () => import('@/features/auth/pages/session-expired-page'),
+)
 const NotFoundPage = lazy(
   () => import('@/shared/components/feedback/not-found-page'),
 )
@@ -25,8 +34,12 @@ export const router = createBrowserRouter([
     element: <AuthLayout />,
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: wrap(<AcademiesPage demo />) },
+      { index: true, element: <Navigate to={routes.login} replace /> },
       { path: 'login', element: wrap(<LoginPage />) },
+      { path: 'access-denied', element: wrap(<AccessDeniedPage />) },
+      { path: 'session-expired', element: wrap(<SessionExpiredPage />) },
+      { path: 'preview/academies', element: wrap(<AcademiesPage demo />) },
+      { path: 'preview/management', element: wrap(<ManagementPreviewPage />) },
     ],
   },
   {

@@ -13,8 +13,8 @@ export function ProtectedRoute() {
         This route requires a verified session. The API authentication contract
         must be agreed before access is enabled.
       </p>
-      <Link className="mt-6 inline-block underline" to={routes.home}>
-        Back to local demo
+      <Link className="mt-6 inline-block underline" to={routes.login}>
+        Voltar para entrada
       </Link>
     </PageContainer>
   )
