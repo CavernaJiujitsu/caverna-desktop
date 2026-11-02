@@ -1,6 +1,6 @@
 # PRD — Entrada desktop e seleção de contexto da gestão
 
-Fonte: [Trello #99](https://trello.com/c/1oAZ32Rz/99-fe-criar-entrada-desktop-e-sele%C3%A7%C3%A3o-de-contexto-da-gest%C3%A3o) · Revisão: 2026-10-29 · Estado: proposta para revisão
+Fonte: [Trello #99](https://trello.com/c/1oAZ32Rz/99-fe-criar-entrada-desktop-e-sele%C3%A7%C3%A3o-de-contexto-da-gest%C3%A3o) · Revisão: 2026-10-29 · Estado: implementação inicial concluída; revisão de contratos pendente
 
 Cartão em **In Progress**, etiqueta FRONT, responsável Gabriel Godoi. Não há checklists, comentários ou anexos no cartão; os critérios estão na descrição.
 
@@ -25,13 +25,25 @@ O comportamento com nenhum ou apenas um contexto, retomada de sessão e destinos
 
 ## Critérios de aceite originais
 
-- [ ] Login desktop com carregamento, validação de campos e erro de credenciais.
-- [ ] Mostrar só contextos retornados pela API; escolher academia/perfil antes de consultar dados.
-- [ ] Navegação distinta para plataforma, academia e professor.
-- [ ] Tratar sessão expirada, saída, troca de contexto e acesso negado.
-- [ ] Não recriar a tela de login móvel; coordenar com a integração existente #78.
+- [x] Login desktop com carregamento, validação de campos e erro de credenciais. (Interface pronta; envio real depende do contrato da API #78.)
+- [ ] Mostrar só contextos retornados pela API; escolher academia/perfil antes de consultar dados. (Interface pronta; consumo da API depende do contrato #98.)
+- [x] Navegação distinta para plataforma, academia e professor. (Interface pronta; destinos reais dependem do contrato #98.)
+- [ ] Tratar sessão expirada, saída, troca de contexto e acesso negado. (Páginas de expiração e acesso negado prontas; lógica de sessão real depende do contrato #78.)
+- [x] Não recriar a tela de login móvel; coordenar com a integração existente #78. (Login móvel não foi recriado.)
 
 Validar navegação por teclado e sessão de cada papel, incluindo usuário com vários contextos, conforme o cartão. Critérios adicionais propostos e sua verificação estão na [especificação técnica](spec.md).
+
+## Status da implementação (branch feat/99-entrada-desktop-contexto-gestao)
+
+- Interface de entrada (`/login`), seleção de contexto (`/management`), sessão expirada (`/session-expired`) e acesso negado (`/access-denied`) implementadas.
+- Rotas `dashboard` e `academies` protegidas por sessão e contexto selecionado.
+- Tratamento global de 401 (expiração) e 403 (acesso negado) via interceptor HTTP.
+- Os contratos de API (endpoints, DTOs, transporte de credenciais, CSRF, logout, renovação) estão marcados como `CONTRACT PENDING #78/#98` nos serviços e não apontam para um backend real até serem confirmados.
+- Testes de serviço, sessão, login e seleção de contexto implementados e passando.
+- Lint, typecheck e build passam.
+
+- [x] Implementação da interface: concluída nesta entrega.
+- [ ] PR: pendente (abrir após confirmação dos contratos #78 e #98).
 
 ## Design e dependências
 

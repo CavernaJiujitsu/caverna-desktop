@@ -1,8 +1,4 @@
-export type ManagementRole = 'platform' | 'academy' | 'teacher'
-
-export type ManagementContext = {
-  id: string
-  role: ManagementRole
-  label: string
-  detail: string
-}
+export type {
+  ManagementContext,
+  ManagementRole,
+} from '@/shared/types/management-context'

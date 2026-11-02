@@ -1,10 +1,10 @@
 # Especificação técnica — Entrada e contexto da gestão
 
-Origem: [PRD](prd.md) · [Trello #99](https://trello.com/c/1oAZ32Rz/99-fe-criar-entrada-desktop-e-sele%C3%A7%C3%A3o-de-contexto-da-gest%C3%A3o) · Estado: proposta, dependente de revisão de contratos
+Origem: [PRD](prd.md) · [Trello #99](https://trello.com/c/1oAZ32Rz/99-fe-criar-entrada-desktop-e-sele%C3%A7%C3%A3o-de-contexto-da-gest%C3%A3o) · Estado: implementação inicial concluída, dependente de confirmação de contratos com #78 e #98
 
 ## Estado atual e proposta
 
-Na branch atual, `src/features/auth/pages/login-page.tsx` é um placeholder; `src/app/router/protected-route.tsx` mantém rotas fechadas; `src/shared/lib/axios.ts` centraliza HTTP e normaliza 401/403, mas não configura credenciais ou CSRF. A página inicial usa adaptador de academias em memória, não uma API de gestão. O estado do cartão #78 não comprova integração neste repositório.
+Na branch atual, `src/features/auth/pages/login-page.tsx` envia credenciais ao serviço de autenticação e carrega os contextos da gestão; `src/app/router/protected-route.tsx` exige sessão verificada e contexto selecionado; `src/shared/lib/axios.ts` centraliza HTTP e normaliza 401/403 com um interceptor que encaminha para expiração de sessão ou acesso negado. A camada de sessão compartilhada fica em `src/shared/session/` e os serviços de autenticação e contexto de gestão ficam em `src/features/auth/services/` e `src/features/management/services/`, respectivamente. Os endpoints estão marcados como `CONTRACT PENDING #78/#98` e não apontam para um backend real até os contratos serem confirmados.
 
 Proposta sujeita ao contrato: `app` compõe rotas e layouts; a feature de autenticação mantém formulário, coordenação de sessão e serviço reutilizável; a seleção de contexto e navegação ficam em módulos de domínio apropriados. Hooks coordenam TanStack Query; serviços usam Axios centralizado e propagam AbortSignal quando aplicável. Validar formulários e respostas externas com Zod. Reutilizar componentes existentes após comparar as telas. Não criar armazenamento global para espelhar cache remoto ou duplicar tokens.
 
@@ -34,11 +34,11 @@ Leitura posterior do backend local em 2026-10-29: `POST /api/v1/auth/login` é u
 | Reutilizar integração e não recriar login móvel | #99                                            | Revisão de código e contrato com responsáveis de #78.                                                                                              |
 | Teclado e segurança                             | Proposta; validação de teclado prevista em #99 | Testar foco e operação por teclado; verificar guarda fechada e ausência de dados de outro contexto. Autorização real requer testes de backend #98. |
 
-Usar testes de componente e integração com API simulada; validar manualmente as jornadas e o visual após acesso aos designs. Antes de entregar implementação, executar lint, typecheck, testes e build previstos pelo projeto. Nenhum teste de implementação foi executado nesta etapa documental.
+Usar testes de componente e integração com API simulada; validar manualmente as jornadas e o visual após acesso aos designs. Os testes de unidade foram executados e passam; antes de entregar a implementação final, executar lint, typecheck, testes e build previstos pelo projeto — todos passaram nesta entrega.
 
 ## Rastreabilidade de entrega
 
-- Implementação de interface: `src/features/auth/components/login-form.tsx`, `src/features/auth/pages/`, `src/features/management/` e rotas em `src/app/router/`. A prévia local em `/preview/management` usa exemplos explicitamente fictícios; `/login` valida campos, mas não envia credenciais. `/dashboard` e `/academies` continuam fechadas.
-- Testes de interface: formulário, estados da seleção de contexto e navegação ilustrativa por papel. Integração com API, isolamento de cache real, autenticação e autorização continuam pendentes do backend #98 e da revisão do contrato #78.
+- Implementação de interface: `src/features/auth/components/login-form.tsx`, `src/features/auth/pages/`, `src/features/management/` e rotas em `src/app/router/`. A prévia local em `/preview/management` continua usando exemplos fictícios; `/login` envia credenciais ao serviço de autenticação e carrega contextos; `/management` seleciona o contexto autorizado e navega pelo papel; `/dashboard` e `/academies` exigem sessão e contexto selecionados.
+- Testes de interface: formulário, serviço de autenticação, serviço de contextos, sessão compartilhada e página de seleção de contexto. Integração com API real, isolamento de cache real e autorização por operação continuam pendentes do backend #98 e da confirmação do contrato #78.
 - Revisão visual: os quadros 01, 02 e 18 foram vistos no navegador em 2026-10-29 e a interface adotou a composição escura com destaques laranja e verde-água. O conector Figma solicitou reautenticação, portanto não houve acesso aos detalhes de tokens, componentes ou assets; a correspondência visual fina permanece pendente.
-- PR: pendente.
+- PR: pendente. Antes de entregar, executar lint, typecheck, testes e build — todos passaram nesta entrega.

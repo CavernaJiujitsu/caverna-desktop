@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { ContextSelection } from '@/features/management/components/context-selection'
-import type { ManagementContext } from '@/features/management/types/management-context'
+import type { ManagementContext } from '@/shared/types/management-context'
 
 const contexts: ManagementContext[] = [
   { id: 'one', role: 'academy', label: 'Academia A', detail: 'Exemplo' },

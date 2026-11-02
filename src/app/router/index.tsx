@@ -21,6 +21,9 @@ const AccessDeniedPage = lazy(
 const SessionExpiredPage = lazy(
   () => import('@/features/auth/pages/session-expired-page'),
 )
+const ContextSelectionPage = lazy(
+  () => import('@/features/management/pages/context-selection-page'),
+)
 const NotFoundPage = lazy(
   () => import('@/shared/components/feedback/not-found-page'),
 )
@@ -38,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'login', element: wrap(<LoginPage />) },
       { path: 'access-denied', element: wrap(<AccessDeniedPage />) },
       { path: 'session-expired', element: wrap(<SessionExpiredPage />) },
+      { path: 'management', element: wrap(<ContextSelectionPage />) },
       { path: 'preview/academies', element: wrap(<AcademiesPage demo />) },
       { path: 'preview/management', element: wrap(<ManagementPreviewPage />) },
     ],

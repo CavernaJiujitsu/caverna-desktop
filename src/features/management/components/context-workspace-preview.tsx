@@ -3,7 +3,7 @@ import { useState } from 'react'
 import type {
   ManagementContext,
   ManagementRole,
-} from '@/features/management/types/management-context'
+} from '@/shared/types/management-context'
 import { Button } from '@/shared/components/ui/button'
 
 const previewNavigation: Record<ManagementRole, string[]> = {

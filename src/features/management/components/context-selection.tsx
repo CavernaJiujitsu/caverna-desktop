@@ -1,7 +1,7 @@
 import type {
   ManagementContext,
   ManagementRole,
-} from '@/features/management/types/management-context'
+} from '@/shared/types/management-context'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
 import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'

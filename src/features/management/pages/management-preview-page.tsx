@@ -4,7 +4,7 @@ import { routes } from '@/app/router/routes'
 import { ContextSelection } from '@/features/management/components/context-selection'
 import { ContextWorkspacePreview } from '@/features/management/components/context-workspace-preview'
 import { ManagementShell } from '@/features/management/components/management-shell'
-import type { ManagementContext } from '@/features/management/types/management-context'
+import type { ManagementContext } from '@/shared/types/management-context'
 
 // Local preview data only. This is never interpreted as an authorized API response.
 const previewContexts: ManagementContext[] = [

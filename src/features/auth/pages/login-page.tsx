@@ -1,10 +1,38 @@
-import { ArrowRight, LockKeyhole } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
+import { useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { LoginForm } from '@/features/auth/components/login-form'
+import { authService } from '@/features/auth/services/auth.service'
+import { managementContextService } from '@/features/management/services/management-context.service'
+import { useSession } from '@/shared/session/session'
+import type { ManagementContext } from '@/shared/types/management-context'
 import { notify } from '@/shared/lib/notifications'
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+  const { setSession, setContexts, clearSession } = useSession()
+
+  const handleLogin = useCallback(
+    async (email: string, password: string) => {
+      clearSession()
+      const response = await authService.login(email, password)
+      setSession({ user: response.user, accessToken: response.accessToken })
+
+      let contexts: ManagementContext[]
+      try {
+        contexts = await managementContextService.list()
+      } catch {
+        contexts = []
+      }
+      setContexts(contexts)
+
+      notify.success('Bem-vindo de volta.')
+      navigate(routes.management, { replace: true })
+    },
+    [clearSession, setSession, setContexts, navigate],
+  )
+
   return (
     <main className="management-surface min-h-svh">
       <div className="mx-auto grid w-full max-w-[1440px] gap-12 px-6 py-16 lg:grid-cols-[1fr_400px] lg:gap-20 lg:px-[100px] lg:pt-[140px]">
@@ -22,18 +50,6 @@ export default function LoginPage() {
           <span className="mt-7 inline-flex rounded-md bg-accent px-4 py-1.5 text-xs font-semibold text-[#08b9ae]">
             Gestão da academia
           </span>
-          <div className="mt-12 rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
-            <div className="flex items-start gap-3">
-              <LockKeyhole
-                className="mt-0.5 size-5 shrink-0 text-foreground"
-                aria-hidden="true"
-              />
-              <p>
-                Prévia de interface. O envio de credenciais e a verificação de
-                sessão serão ativados após a integração com a API.
-              </p>
-            </div>
-          </div>
         </section>
         <section
           className="h-fit rounded-xl border border-border bg-card p-6 shadow-sm"
@@ -48,25 +64,21 @@ export default function LoginPage() {
             </p>
           </div>
           <LoginForm
-            onSubmit={async () => {
-              notify.info(
-                'A autenticação estará disponível após a integração com a API.',
-              )
-            }}
+            onSubmit={({ email, password }) => handleLogin(email, password)}
           />
           <p className="mt-5 text-xs text-muted-foreground">
             Sua academia ou perfil será selecionado após entrar.
           </p>
-          <div className="mt-6 border-t pt-5 text-sm">
-            <Link
-              className="inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline"
-              to={routes.managementPreview}
-            >
-              Explorar prévia dos contextos{' '}
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          </div>
         </section>
+        <div className="mt-6 border-t pt-5 text-sm">
+          <Link
+            className="inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline"
+            to={routes.managementPreview}
+          >
+            Explorar prévia dos contextos{' '}
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
       </div>
     </main>
   )

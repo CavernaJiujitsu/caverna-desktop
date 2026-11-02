@@ -1,21 +1,23 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
+import { useSession } from '@/shared/session/session'
 import { PageContainer } from '@/shared/components/layout/page-container'
 
-export function ProtectedRoute() {
-  // Auth contracts have not been agreed with the API. Fail closed until then.
-  return (
-    <PageContainer>
-      <h1 className="text-2xl font-semibold">
-        Authentication integration pending
-      </h1>
-      <p className="mt-3 text-muted-foreground">
-        This route requires a verified session. The API authentication contract
-        must be agreed before access is enabled.
-      </p>
-      <Link className="mt-6 inline-block underline" to={routes.login}>
-        Voltar para entrada
-      </Link>
-    </PageContainer>
-  )
+type ProtectedRouteProps = { children?: React.ReactNode }
+
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const navigate = useNavigate()
+  const { session, selectedContext } = useSession()
+
+  if (!session) {
+    navigate(routes.login, { replace: true })
+    return null
+  }
+
+  if (!selectedContext) {
+    navigate(routes.management, { replace: true })
+    return null
+  }
+
+  return <PageContainer>{children}</PageContainer>
 }

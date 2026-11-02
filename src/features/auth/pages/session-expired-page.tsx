@@ -1,9 +1,17 @@
 import { Clock3 } from 'lucide-react'
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { Button } from '@/shared/components/ui/button'
+import { useSession } from '@/shared/session/session'
 
 export default function SessionExpiredPage() {
+  const { clearSession } = useSession()
+
+  useEffect(() => {
+    clearSession()
+  }, [clearSession])
+
   return (
     <main className="management-surface flex min-h-svh flex-col items-center justify-center px-4 py-12 text-center">
       <div className="max-w-xl">
