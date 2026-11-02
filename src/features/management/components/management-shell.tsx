@@ -37,7 +37,7 @@ export function ManagementShell({ children }: { children: ReactNode }) {
             <li className="rounded-md bg-accent px-4 py-2.5">Unidades</li>
           </ul>
         </nav>
-        <div className="mt-0 flex flex-wrap gap-2 pt-12 text-sm lg:mt-auto lg:pt-0 lg:flex-col">
+        <div className="!mt-20 flex flex-wrap gap-2 pt-0 text-sm lg:!mt-auto lg:flex-col">
           <Button
             type="button"
             variant="outline"
