@@ -30,7 +30,7 @@ export function ManagementShell({ children }: { children: ReactNode }) {
         <nav className="mt-5 hidden lg:block" aria-label="Áreas de gestão">
           <ul className="space-y-3 text-sm">
             <li className="rounded-md bg-primary px-4 py-2.5 font-medium text-primary-foreground">
-              Aulas
+              <Link to={routes.classesPreview}>Aulas</Link>
             </li>
             <li className="rounded-md bg-accent px-4 py-2.5">Alunos</li>
             <li className="rounded-md bg-accent px-4 py-2.5">Professores</li>
