@@ -3,9 +3,11 @@ import { Button } from '@/shared/components/ui/button'
 export function ErrorState({
   message,
   onRetry,
+  retryLabel = 'Try again',
 }: {
   message: string
   onRetry?: () => void
+  retryLabel?: string
 }) {
   return (
     <div
@@ -15,7 +17,7 @@ export function ErrorState({
       <p>{message}</p>
       {onRetry && (
         <Button className="mt-4" variant="outline" onClick={onRetry}>
-          Try again
+          {retryLabel}
         </Button>
       )}
     </div>

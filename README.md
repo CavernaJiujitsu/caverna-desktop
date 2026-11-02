@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Caverna Desktop is the React web client for Caverna Jiu-Jitsu, a platform for managing and following practitioners' journeys. This repository currently contains the frontend foundation and an explicitly local academy demo; production features await agreed NestJS API contracts.
+Caverna Desktop is the React web client for Caverna Jiu-Jitsu, a platform for managing and following practitioners' journeys. This repository contains the frontend foundation, a management-entry UI preview and an explicitly local academy demo; production management flows await agreed NestJS API contracts.
 
 ## Problem & Motivation
 
@@ -22,7 +22,7 @@ flowchart LR
   Axios --> API[NestJS API]
 ```
 
-The diagram is the intended production flow. The current academy service is an in-memory demo adapter and performs no HTTP request. `app` composes features and shared resources; features depend on `shared`; `shared` depends on neither app nor features.
+The diagram is the intended production flow. The current academy service is an in-memory demo adapter and performs no HTTP request. The management entry and context preview are UI-only and do not send credentials or create sessions. `app` composes features and shared resources; features depend on `shared`; `shared` depends on neither app nor features.
 
 ## Architectural Decisions
 
@@ -33,7 +33,7 @@ Feature ownership, query caching and fail-closed protected routes are recorded i
 ```text
 src/
   app/                 providers, router and layouts
-  features/            auth, dashboard and academies
+  features/            auth, management, dashboard and academies
   shared/              UI, HTTP, errors, notifications and query client
   styles/              provisional semantic tokens
   test/                test setup
@@ -53,7 +53,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open the URL printed by Vite. `/` is a local in-memory academy demo. `/login` explains the pending auth integration. `/dashboard` and `/academies` currently fail closed until a verified session integration exists. The Vite dev server works without `.env` using documented local defaults.
+Open the URL printed by Vite. `/` redirects to `/login`, the management-entry UI preview. `/preview/management` presents local context examples and UI states; `/preview/academies` retains the in-memory academy demo. `/access-denied` and `/session-expired` show safe informational states. `/dashboard` and `/academies` remain closed until verified session and context integration exists. The Vite dev server works without `.env` using documented local defaults.
 
 ## Environment Variables
 
@@ -86,11 +86,11 @@ TanStack Query owns server state, freshness, retries and invalidation. React sta
 
 ## Validation & Error Handling
 
-Zod validates the demo form and environment. The HTTP boundary maps known failure categories into safe user-facing errors without exposing response bodies. Sonner notifications are centralized with consistent durations and stable IDs to avoid duplicates. The demo form has labeled controls, inline errors and submission feedback.
+Zod validates the management-entry preview form, academy demo form and environment. The HTTP boundary maps known failure categories into safe user-facing errors without exposing response bodies. Sonner notifications are centralized with consistent durations and stable IDs to avoid duplicates. Forms have labeled controls, inline errors and submission feedback. Valid management-entry submissions only show a notice that API integration is pending.
 
 ## Testing & Code Quality
 
-Vitest and React Testing Library cover component interaction, form validation, mocked HTTP behavior and an error state. Run `npm run lint`, `npm run typecheck`, `npm run test:run`, `npm run format:check` and `npm run build` before review. Husky and lint-staged check changed files before commits. See [testing guidance](docs/testing.md).
+Vitest and React Testing Library cover component interaction, form validation, mocked HTTP behavior, context selection and error states. Run `npm run lint`, `npm run typecheck`, `npm run test:run`, `npm run format:check` and `npm run build` before review. Husky and lint-staged check changed files before commits. See [testing guidance](docs/testing.md).
 
 ## Spec-Driven Development Workflow
 
@@ -114,10 +114,10 @@ For a card-to-PR request, use them in that order. Each skill has entry/exit crit
 
 ## Roadmap
 
-1. Agree on NestJS authentication transport, DTOs, CORS and CSRF strategy.
-2. Integrate verified sessions and real protected routes.
+1. Agree on management authentication, context DTOs, session transport and backend authorization for Trello #99.
+2. Integrate verified sessions, context-aware queries and real protected routes.
 3. Specify academy and dashboard contracts before replacing the local demo.
-4. Adopt approved Caverna Figma tokens and components.
+4. Finish the detailed Figma review when the design connector is available; replace the current visual approximation with approved tokens and components.
 
 ## Contributing
 
