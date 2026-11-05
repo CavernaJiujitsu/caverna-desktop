@@ -2,5 +2,6 @@
 
 - `bun run lint`: passou.
 - `bun run typecheck`: passou.
-- `bunx vitest run --run`: 12 arquivos, 22 testes passaram.
-- Integração com a API real: pendente; a tela usa dados demo até o fluxo de autenticação/gestão backend estar disponível no desktop.
+- `bun run test:run`: 15 arquivos, 26 testes passaram.
+- O service de professores cobre o parsing do envelope e UUID real.
+- Service/página usam API real; teste HTTP autenticado/manual permanece pendente porque o contrato de sessão do desktop ainda está bloqueado conforme `docs/api-integration.md`.

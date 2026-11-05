@@ -1,5 +1,5 @@
 # Review
 
-Nenhum segredo, HTML remoto ou autorização inventada foi adicionado. Os filtros são validados pelo backend quando a integração real for conectada; a implementação demo não executa aprovação/rejeição.
+Nenhum segredo, HTML remoto ou autorização inventada foi adicionado. Os filtros são enviados ao backend e o envelope é validado com Zod; a tela não executa aprovação/rejeição.
 
-Limitação: a data exibida depende do contrato backend e a integração real ainda não foi executada.
+Limitação: a chamada autenticada não foi executada manualmente porque o contrato de sessão desktop ainda não está disponível.

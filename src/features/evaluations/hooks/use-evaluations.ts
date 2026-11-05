@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { evaluationDemoService, type EvaluationFilters } from '@/features/evaluations/services/evaluation-demo.service'
+import { listEvaluations, type EvaluationFilters } from '@/features/evaluations/services/evaluation.service'
 
 export function useEvaluations(filters: EvaluationFilters) {
   return useQuery({
-    queryKey: ['evaluations', 'demo', filters],
-    queryFn: ({ signal }) => evaluationDemoService.list(filters, signal),
-    staleTime: 0,
+    queryKey: ['evaluations', filters],
+    queryFn: ({ signal }) => listEvaluations(filters, signal),
+    staleTime: 60_000,
+    retry: 1,
   })
 }
