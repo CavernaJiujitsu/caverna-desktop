@@ -22,3 +22,15 @@ export function useCreateAcademy() {
       queryClient.invalidateQueries({ queryKey: academyKeys.all }),
   })
 }
+
+export function useAcademyMutations() {
+  const queryClient = useQueryClient()
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: academyKeys.all })
+  return {
+    update: useMutation({ mutationFn: ({ id, input }: { id: string; input: AcademyInput }) => academyService.update(id, input), onSuccess: invalidate }),
+    remove: useMutation({ mutationFn: (id: string) => academyService.remove(id), onSuccess: invalidate }),
+    createUnit: useMutation({ mutationFn: ({ caveId, input }: { caveId: string; input: Parameters<typeof academyService.createUnit>[1] }) => academyService.createUnit(caveId, input), onSuccess: invalidate }),
+    updateUnit: useMutation({ mutationFn: ({ caveId, unitId, input }: { caveId: string; unitId: string; input: Parameters<typeof academyService.updateUnit>[2] }) => academyService.updateUnit(caveId, unitId, input), onSuccess: invalidate }),
+    removeUnit: useMutation({ mutationFn: ({ caveId, unitId }: { caveId: string; unitId: string }) => academyService.removeUnit(caveId, unitId), onSuccess: invalidate }),
+  }
+}

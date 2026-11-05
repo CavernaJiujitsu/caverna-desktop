@@ -7,7 +7,7 @@ vi.mock('@/shared/lib/axios', () => ({ http: { get: vi.fn(), post: vi.fn() } }))
 describe('academyService', () => {
   it('consulta cavernas pelo endpoint real', async () => {
     vi.mocked(http.get).mockResolvedValue({ data: { data: { data: [{ id: 'c1', name: 'Caverna' }] } } })
-    await expect(academyService.list()).resolves.toEqual([{ id: 'c1', name: 'Caverna' }])
+    await expect(academyService.list()).resolves.toEqual([{ id: 'c1', name: 'Caverna', units: [] }])
     expect(http.get).toHaveBeenCalledWith('/caves', expect.any(Object))
   })
 })

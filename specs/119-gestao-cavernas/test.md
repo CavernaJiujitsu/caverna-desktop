@@ -1,3 +1,3 @@
 # Testes — #119
 
-Teste de contrato do serviço adicionado. `bun run lint`, `bun run typecheck` e `bun run test:run` passaram (19 arquivos, 32 testes); validação manual autenticada de criação depende de API/usuário disponíveis.
+Testes de contrato de cavernas e unidades adicionados. `bun run lint`, `bun run typecheck` e `bun run test:run` passaram (20 arquivos, 33 testes); validação manual autenticada depende de API/usuário disponíveis.

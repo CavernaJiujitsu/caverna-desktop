@@ -6,6 +6,13 @@ import AcademiesPage from '@/features/academies/pages/academies-page'
 vi.mock('@/features/academies/hooks/use-academies', () => ({
   useAcademies: () => ({ isPending: false, isError: true, refetch: vi.fn() }),
   useCreateAcademy: () => ({ isPending: false, mutateAsync: vi.fn() }),
+  useAcademyMutations: () => ({
+    update: { isPending: false, mutateAsync: vi.fn() },
+    remove: { isPending: false, mutate: vi.fn() },
+    createUnit: { isPending: false, mutateAsync: vi.fn() },
+    updateUnit: { isPending: false, mutateAsync: vi.fn() },
+    removeUnit: { isPending: false, mutate: vi.fn() },
+  }),
 }))
 
 it('renders an actionable load error state', () => {
