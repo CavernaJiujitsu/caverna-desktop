@@ -3,6 +3,8 @@ import { env } from '@/shared/lib/env'
 import { AppError } from '@/shared/types/app-error'
 import { getAccessToken } from '@/shared/session/access-token'
 
+const API_PREFIX = '/api/v1'
+
 export const http = axios.create({
   baseURL: env.VITE_API_BASE_URL,
   timeout: env.VITE_API_TIMEOUT_MS,
@@ -12,6 +14,9 @@ export const http = axios.create({
 })
 
 http.interceptors.request.use((config) => {
+  if (config.url?.startsWith('/') && !config.url.startsWith(API_PREFIX)) {
+    config.url = `${API_PREFIX}${config.url}`
+  }
   const accessToken = getAccessToken()
   if (accessToken) config.headers.set('Authorization', `Bearer ${accessToken}`)
   return config
