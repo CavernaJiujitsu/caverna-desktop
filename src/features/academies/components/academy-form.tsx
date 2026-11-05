@@ -25,9 +25,9 @@ export function AcademyForm() {
     try {
       await createAcademy.mutateAsync(values)
       reset()
-      notify.success('Demo academy added')
+      notify.success('Academy added')
     } catch {
-      notify.error('Could not add the demo academy. Please try again.')
+      notify.error('Could not add the academy. Please try again.')
     }
   }
 
@@ -52,7 +52,7 @@ export function AcademyForm() {
         </p>
       )}
       <Button type="submit" disabled={createAcademy.isPending}>
-        {createAcademy.isPending ? 'Adding…' : 'Add demo academy'}
+        {createAcademy.isPending ? 'Adding…' : 'Add academy'}
       </Button>
     </form>
   )

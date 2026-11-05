@@ -18,7 +18,7 @@ it('shows a Zod error and does not submit an empty name', async () => {
     </QueryClientProvider>,
   )
   await userEvent.click(
-    screen.getByRole('button', { name: 'Add demo academy' }),
+    screen.getByRole('button', { name: 'Add academy' }),
   )
   expect(await screen.findByRole('alert')).toHaveTextContent('Enter a name')
   expect(screen.getByLabelText('Academy name')).toHaveAttribute(

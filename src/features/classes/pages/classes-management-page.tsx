@@ -10,11 +10,11 @@ import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import { classInputSchema, type AcademyClass, type ClassInput } from '@/features/classes/schemas/class.schema'
-import { classMovements, classTeachers, classUnits } from '@/features/classes/services/class-demo.service'
 import { useClasses, useSaveClass } from '@/features/classes/hooks/use-classes'
+import { useClassCatalog } from '@/features/classes/hooks/use-class-catalog'
 import { notify } from '@/shared/lib/notifications'
 
-const today = '2026-11-05'
+const today = new Date().toISOString().slice(0, 10)
 
 function labelForType(type: AcademyClass['type']) {
   return { regular: 'Regular', validation: 'Validação', exam: 'Exame' }[type]
@@ -22,12 +22,14 @@ function labelForType(type: AcademyClass['type']) {
 
 function ClassForm({ value, onCancel, onSaved }: { value: AcademyClass | null; onCancel: () => void; onSaved: () => void }) {
   const mutation = useSaveClass()
+  const catalog = useClassCatalog()
+  const units = catalog.units.data ?? []
+  const teachers = catalog.teachers.data ?? []
   type FormValues = z.input<typeof classInputSchema>
   const form = useForm<FormValues, unknown, ClassInput>({
     resolver: zodResolver(classInputSchema),
-    defaultValues: value ? { unitId: value.unitId, teacherId: value.teacherId, date: value.date, startsAt: value.startsAt, endsAt: value.endsAt, capacity: value.capacity, type: value.type, eligibleBelts: value.eligibleBelts, movementIds: value.movements.map((movement) => movement.id) } : { unitId: classUnits[0]!.id, teacherId: classTeachers[0]!.id, date: today, startsAt: '19:00', endsAt: '20:30', capacity: 20, type: 'regular', eligibleBelts: ['white'], movementIds: [] },
+    defaultValues: value ? { unitId: value.unitId, teacherId: value.teacherId, date: value.date, startsAt: value.startsAt, endsAt: value.endsAt, capacity: value.capacity, type: value.type, eligibleBelts: value.eligibleBelts, movementIds: value.movements.map((movement) => movement.id) } : { unitId: units[0]?.id ?? '', teacherId: teachers[0]?.id ?? '', date: today, startsAt: '19:00', endsAt: '20:30', capacity: 20, type: 'regular', eligibleBelts: ['white'], movementIds: [] },
   })
-  const selectedMovements = useWatch({ control: form.control, name: 'movementIds' })
   const selectedBelts = useWatch({ control: form.control, name: 'eligibleBelts' })
 
   async function submit(input: ClassInput) {
@@ -38,8 +40,8 @@ function ClassForm({ value, onCancel, onSaved }: { value: AcademyClass | null; o
     <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">{value ? 'Editar encontro' : 'Novo encontro'}</p><h2 id="class-form-title" className="mt-2 text-2xl font-semibold">{value ? value.unitName : 'Cadastrar aula'}</h2></div><Button type="button" variant="ghost" onClick={onCancel}>Fechar</Button></div>
     <form className="mt-6 grid gap-5" onSubmit={form.handleSubmit(submit)} noValidate>
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="grid gap-2 text-sm font-medium">Unidade<select className="h-10 rounded-md border border-input bg-background px-3" {...form.register('unitId')}><option value="">Selecione</option>{classUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select>{form.formState.errors.unitId && <span className="text-xs text-destructive">{form.formState.errors.unitId.message}</span>}</label>
-        <label className="grid gap-2 text-sm font-medium">Professor<select className="h-10 rounded-md border border-input bg-background px-3" {...form.register('teacherId')}><option value="">Selecione</option>{classTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select>{form.formState.errors.teacherId && <span className="text-xs text-destructive">{form.formState.errors.teacherId.message}</span>}</label>
+        <label className="grid gap-2 text-sm font-medium">Unidade<select className="h-10 rounded-md border border-input bg-background px-3" {...form.register('unitId')}><option value="">Selecione</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select>{form.formState.errors.unitId && <span className="text-xs text-destructive">{form.formState.errors.unitId.message}</span>}</label>
+        <label className="grid gap-2 text-sm font-medium">Professor<select className="h-10 rounded-md border border-input bg-background px-3" {...form.register('teacherId')}><option value="">Selecione</option>{teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select>{form.formState.errors.teacherId && <span className="text-xs text-destructive">{form.formState.errors.teacherId.message}</span>}</label>
         <label className="grid gap-2 text-sm font-medium">Data<Input type="date" {...form.register('date')} />{form.formState.errors.date && <span className="text-xs text-destructive">{form.formState.errors.date.message}</span>}</label>
         <label className="grid gap-2 text-sm font-medium">Tipo<select className="h-10 rounded-md border border-input bg-background px-3" {...form.register('type')}><option value="regular">Regular</option><option value="validation">Validação</option><option value="exam">Exame</option></select></label>
         <label className="grid gap-2 text-sm font-medium">Início<Input type="time" {...form.register('startsAt')} /></label>
@@ -47,7 +49,6 @@ function ClassForm({ value, onCancel, onSaved }: { value: AcademyClass | null; o
         <label className="grid gap-2 text-sm font-medium">Capacidade<Input type="number" min="1" {...form.register('capacity')} />{form.formState.errors.capacity && <span className="text-xs text-destructive">{form.formState.errors.capacity.message}</span>}</label>
       </div>
       <fieldset><legend className="text-sm font-medium">Faixas elegíveis</legend><div className="mt-2 flex flex-wrap gap-2">{(['white','blue','purple','brown','black'] as const).map((belt) => <label key={belt} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"><input type="checkbox" checked={selectedBelts.includes(belt)} onChange={(event) => form.setValue('eligibleBelts', event.target.checked ? [...selectedBelts, belt] : selectedBelts.filter((item) => item !== belt), { shouldValidate: true })} />{belt}</label>)}</div>{form.formState.errors.eligibleBelts && <p className="mt-2 text-xs text-destructive">{form.formState.errors.eligibleBelts.message}</p>}</fieldset>
-      <fieldset><legend className="text-sm font-medium">Movimentos ensinados</legend><div className="mt-2 grid gap-2 md:grid-cols-3">{classMovements.map((movement) => <label key={movement.id} className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"><input type="checkbox" checked={selectedMovements.includes(movement.id)} onChange={(event) => form.setValue('movementIds', event.target.checked ? [...selectedMovements, movement.id] : selectedMovements.filter((id) => id !== movement.id))} />{movement.name}</label>)}</div></fieldset>
       <div className="flex flex-wrap justify-end gap-3"><Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button><Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Salvando…' : value ? 'Salvar alterações' : 'Criar aula'}</Button></div>
     </form>
   </section>
@@ -58,6 +59,8 @@ export default function ClassesManagementPage() {
   const [selected, setSelected] = useState<AcademyClass | null>(null)
   const [editing, setEditing] = useState<AcademyClass | null | undefined>(undefined)
   const query = useClasses(filters)
+  const catalog = useClassCatalog()
+  const classUnits = catalog.units.data ?? []
   const classes = query.data ?? []
   const selectedFresh = classes.find((item) => item.id === selected?.id) ?? selected
 

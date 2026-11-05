@@ -13,9 +13,7 @@ export default function AcademiesPage({ demo = false }: { demo?: boolean }) {
       <PageHeader
         title="Academies"
         description={
-          demo
-            ? 'Local in-memory demonstration. No data is sent to the Caverna API or saved after refresh.'
-            : undefined
+            demo ? 'Prévia da gestão de cavernas usando o mesmo contrato da API.' : 'Cadastre e consulte cavernas pela API do Caverna.'
         }
       />
       <div className="grid gap-8 md:grid-cols-[1fr_1.5fr]">
@@ -33,7 +31,7 @@ export default function AcademiesPage({ demo = false }: { demo?: boolean }) {
             />
           ) : academies.data.length === 0 ? (
             <EmptyState
-              title="No demo academies yet"
+              title="No academies yet"
               description="Add one using the form."
             />
           ) : (
