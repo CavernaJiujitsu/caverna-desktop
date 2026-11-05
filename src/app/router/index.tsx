@@ -18,6 +18,9 @@ const ManagementPreviewPage = lazy(
 const ClassesManagementPage = lazy(
   () => import('@/features/classes/pages/classes-management-page'),
 )
+const EvaluationsQueuePage = lazy(
+  () => import('@/features/evaluations/pages/evaluations-queue-page'),
+)
 const AccessDeniedPage = lazy(
   () => import('@/features/management/pages/access-denied-page'),
 )
@@ -48,6 +51,7 @@ export const router = createBrowserRouter([
       { path: 'preview/academies', element: wrap(<AcademiesPage demo />) },
       { path: 'preview/management', element: wrap(<ManagementPreviewPage />) },
       { path: 'preview/management/classes', element: wrap(<ClassesManagementPage />) },
+      { path: 'preview/management/evaluations', element: wrap(<EvaluationsQueuePage />) },
     ],
   },
   {

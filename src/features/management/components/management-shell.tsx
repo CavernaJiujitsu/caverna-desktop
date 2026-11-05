@@ -32,6 +32,9 @@ export function ManagementShell({ children }: { children: ReactNode }) {
             <li className="rounded-md bg-primary px-4 py-2.5 font-medium text-primary-foreground">
               <Link to={routes.classesPreview}>Aulas</Link>
             </li>
+            <li className="rounded-md bg-accent px-4 py-2.5">
+              <Link to={routes.evaluationsPreview}>Avaliações</Link>
+            </li>
             <li className="rounded-md bg-accent px-4 py-2.5">Alunos</li>
             <li className="rounded-md bg-accent px-4 py-2.5">Professores</li>
             <li className="rounded-md bg-accent px-4 py-2.5">Unidades</li>
