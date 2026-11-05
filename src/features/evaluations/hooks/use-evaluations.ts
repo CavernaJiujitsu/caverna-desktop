@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { listEvaluations, type EvaluationFilters } from '@/features/evaluations/services/evaluation.service'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { approveEvaluation, listEvaluations, type EvaluationFilters } from '@/features/evaluations/services/evaluation.service'
 
 export function useEvaluations(filters: EvaluationFilters) {
   return useQuery({
@@ -7,5 +7,13 @@ export function useEvaluations(filters: EvaluationFilters) {
     queryFn: ({ signal }) => listEvaluations(filters, signal),
     staleTime: 60_000,
     retry: 1,
+  })
+}
+
+export function useApproveEvaluation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => approveEvaluation(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['evaluations'] }),
   })
 }

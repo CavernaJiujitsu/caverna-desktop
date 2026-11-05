@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { SessionProvider } from '@/shared/session/session-context'
 import { useSession, type Session } from '@/shared/session/session'
+import { getAccessToken } from '@/shared/session/access-token'
 
 const user: Session['user'] = {
   id: 'user-1',
@@ -39,6 +40,7 @@ describe('session context', () => {
       result.current.setSession({ user, accessToken: 'token-abc' })
     })
     expect(result.current.session?.accessToken).toBe('token-abc')
+    expect(getAccessToken()).toBe('token-abc')
     expect(result.current.session?.user.email).toBe('pessoa@exemplo.com')
 
     act(() => {
@@ -47,6 +49,7 @@ describe('session context', () => {
     expect(result.current.session).toBeNull()
     expect(result.current.selectedContext).toBeNull()
     expect(result.current.contexts).toEqual([])
+    expect(getAccessToken()).toBeNull()
   })
 
   it('sets contexts and a selected context', () => {

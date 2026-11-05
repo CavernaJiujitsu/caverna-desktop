@@ -9,6 +9,7 @@ import {
 import { SessionProvider } from '@/shared/session/session-context'
 import LoginPage from '@/features/auth/pages/login-page'
 import { http } from '@/shared/lib/axios'
+import { getAccessToken, setAccessToken } from '@/shared/session/access-token'
 
 vi.mock('@/shared/lib/axios', () => ({ http: { post: vi.fn(), get: vi.fn() } }))
 
@@ -28,6 +29,7 @@ describe('LoginPage', () => {
   })
 
   afterEach(() => {
+    setAccessToken(null)
     vi.restoreAllMocks()
   })
 
@@ -73,6 +75,7 @@ describe('LoginPage', () => {
     await vi.waitFor(() => {
       expect(mockedGet).toHaveBeenCalledWith('/api/v1/management/contexts')
     })
+    expect(getAccessToken()).toBe('token-abc')
   })
 
   it('shows a safe credential error when login fails with 401', async () => {

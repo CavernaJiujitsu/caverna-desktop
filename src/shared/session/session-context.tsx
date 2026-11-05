@@ -5,6 +5,7 @@ import {
   type Session,
   type SessionContextValue,
 } from './session'
+import { setAccessToken } from './access-token'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<Session | null>(null)
@@ -12,7 +13,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [selectedContext, setSelectedContextState] =
     useState<ManagementContext | null>(null)
 
-  const setSession = useCallback((s: Session | null) => setSessionState(s), [])
+  const setSession = useCallback((s: Session | null) => {
+    setSessionState(s)
+    setAccessToken(s?.accessToken ?? null)
+  }, [])
   const setContexts = useCallback(
     (c: ManagementContext[]) => setContextsState(c),
     [],
@@ -22,10 +26,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [],
   )
   const clearSession = useCallback(() => {
-    setSessionState(null)
+    setSession(null)
     setContextsState([])
     setSelectedContextState(null)
-  }, [])
+  }, [setSession])
 
   const value: SessionContextValue = {
     session,

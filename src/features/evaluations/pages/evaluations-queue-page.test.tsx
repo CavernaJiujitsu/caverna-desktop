@@ -20,6 +20,7 @@ vi.mock('@/features/evaluations/hooks/use-evaluations', () => ({
     }],
     refetch: vi.fn(),
   }),
+  useApproveEvaluation: () => ({ isPending: false, mutate: vi.fn() }),
 }))
 
 vi.mock('@/features/teachers/hooks/use-teachers', () => ({

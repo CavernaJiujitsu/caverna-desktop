@@ -41,3 +41,10 @@ export async function listEvaluations(filters: EvaluationFilters, signal?: Abort
   })
   return responseSchema.parse(response.data).data.data
 }
+
+const mutationResponseSchema = z.object({ data: evaluationSchema })
+
+export async function approveEvaluation(id: string, signal?: AbortSignal) {
+  const response = await http.patch(`/belt-validations/${id}/approve`, {}, { signal })
+  return mutationResponseSchema.parse(response.data).data
+}

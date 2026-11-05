@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import { env } from '@/shared/lib/env'
 import { AppError } from '@/shared/types/app-error'
+import { getAccessToken } from '@/shared/session/access-token'
 
 export const http = axios.create({
   baseURL: env.VITE_API_BASE_URL,
@@ -8,6 +9,12 @@ export const http = axios.create({
   headers: { Accept: 'application/json' },
   // Credentials and CSRF will be configured after the API auth contract is agreed.
   withCredentials: false,
+})
+
+http.interceptors.request.use((config) => {
+  const accessToken = getAccessToken()
+  if (accessToken) config.headers.set('Authorization', `Bearer ${accessToken}`)
+  return config
 })
 
 export function normalizeHttpError(error: unknown): AppError {
