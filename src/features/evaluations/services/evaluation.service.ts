@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { http } from '@/shared/lib/axios'
+import { AppError } from '@/shared/types/app-error'
 
 const evaluationSchema = z.object({
   id: z.string(),
@@ -54,6 +55,25 @@ export async function listEvaluations(
 }
 
 const mutationResponseSchema = z.object({ data: evaluationSchema })
+
+const itemResponseSchema = z.object({ data: evaluationSchema })
+
+export async function createEvaluation(
+  input: { targetBeltId?: string; certificateUrl?: string; classId?: string },
+  signal?: AbortSignal,
+) {
+  const response = await http.post('/belt-validations', input, { signal })
+  return itemResponseSchema.parse(response.data).data
+}
+
+export async function findEvaluation(id: string, signal?: AbortSignal) {
+  try {
+    const response = await http.get(`/belt-validations/${id}`, { signal })
+    return itemResponseSchema.parse(response.data).data
+  } catch {
+    throw new AppError('not-found', 'Validação de faixa não encontrada.')
+  }
+}
 
 export async function approveEvaluation(id: string, signal?: AbortSignal) {
   const response = await http.patch(

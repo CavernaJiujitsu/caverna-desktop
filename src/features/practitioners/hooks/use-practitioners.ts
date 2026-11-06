@@ -10,6 +10,8 @@ export const practitionerKeys = {
   all: ['practitioners'] as const,
   list: () => ['practitioners', 'list'] as const,
   item: (id: string) => ['practitioners', id] as const,
+  trail: () => ['practitioners', 'trail'] as const,
+  home: (id: string) => ['practitioners', id, 'home'] as const,
 }
 
 export function usePractitioners() {
@@ -61,5 +63,24 @@ export function useRemovePractitioner() {
     mutationFn: (id) => practitionerService.remove(id),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: practitionerKeys.all }),
+  })
+}
+
+export function usePractitionerTrail() {
+  return useQuery({
+    queryKey: practitionerKeys.trail(),
+    queryFn: ({ signal }) => practitionerService.getMyTrail(signal),
+    staleTime: 60_000,
+    retry: 1,
+  })
+}
+
+export function usePractitionerHome(id: string) {
+  return useQuery({
+    queryKey: practitionerKeys.home(id),
+    queryFn: ({ signal }) => practitionerService.getHome(id, signal),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+    retry: 1,
   })
 }

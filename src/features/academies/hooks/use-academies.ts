@@ -25,12 +25,78 @@ export function useCreateAcademy() {
 
 export function useAcademyMutations() {
   const queryClient = useQueryClient()
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: academyKeys.all })
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: academyKeys.all })
   return {
-    update: useMutation({ mutationFn: ({ id, input }: { id: string; input: AcademyInput }) => academyService.update(id, input), onSuccess: invalidate }),
-    remove: useMutation({ mutationFn: (id: string) => academyService.remove(id), onSuccess: invalidate }),
-    createUnit: useMutation({ mutationFn: ({ caveId, input }: { caveId: string; input: Parameters<typeof academyService.createUnit>[1] }) => academyService.createUnit(caveId, input), onSuccess: invalidate }),
-    updateUnit: useMutation({ mutationFn: ({ caveId, unitId, input }: { caveId: string; unitId: string; input: Parameters<typeof academyService.updateUnit>[2] }) => academyService.updateUnit(caveId, unitId, input), onSuccess: invalidate }),
-    removeUnit: useMutation({ mutationFn: ({ caveId, unitId }: { caveId: string; unitId: string }) => academyService.removeUnit(caveId, unitId), onSuccess: invalidate }),
+    update: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: AcademyInput }) =>
+        academyService.update(id, input),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => academyService.remove(id),
+      onSuccess: invalidate,
+    }),
+    createUnit: useMutation({
+      mutationFn: ({
+        caveId,
+        input,
+      }: {
+        caveId: string
+        input: Parameters<typeof academyService.createUnit>[1]
+      }) => academyService.createUnit(caveId, input),
+      onSuccess: invalidate,
+    }),
+    updateUnit: useMutation({
+      mutationFn: ({
+        caveId,
+        unitId,
+        input,
+      }: {
+        caveId: string
+        unitId: string
+        input: Parameters<typeof academyService.updateUnit>[2]
+      }) => academyService.updateUnit(caveId, unitId, input),
+      onSuccess: invalidate,
+    }),
+    removeUnit: useMutation({
+      mutationFn: ({ caveId, unitId }: { caveId: string; unitId: string }) =>
+        academyService.removeUnit(caveId, unitId),
+      onSuccess: invalidate,
+    }),
+    linkPractitioner: useMutation({
+      mutationFn: ({
+        caveId,
+        unitId,
+        practitionerId,
+      }: {
+        caveId: string
+        unitId: string
+        practitionerId: string
+      }) => academyService.linkPractitioner(caveId, unitId, practitionerId),
+      onSuccess: invalidate,
+    }),
+    unlinkPractitioner: useMutation({
+      mutationFn: ({
+        caveId,
+        unitId,
+        practitionerId,
+      }: {
+        caveId: string
+        unitId: string
+        practitionerId: string
+      }) => academyService.unlinkPractitioner(caveId, unitId, practitionerId),
+      onSuccess: invalidate,
+    }),
   }
+}
+
+export function useUnitPractitioners(caveId: string, unitId: string) {
+  return useQuery({
+    queryKey: ['academies', caveId, 'units', unitId, 'practitioners'],
+    queryFn: ({ signal }) =>
+      academyService.listUnitPractitioners(caveId, unitId, signal),
+    enabled: Boolean(caveId && unitId),
+    staleTime: 60_000,
+  })
 }

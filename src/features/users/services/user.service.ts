@@ -10,6 +10,12 @@ const userSchema = z.object({
 
 export type User = z.infer<typeof userSchema>
 
+export type UserInput = {
+  name: string
+  email: string
+  password: string
+}
+
 const listResponseSchema = z.object({
   data: z.object({
     data: z.array(userSchema),
@@ -57,6 +63,15 @@ export const userService = {
       await http.delete(ENDPOINTS.item(id))
     } catch {
       throw new AppError('unknown', 'Falha ao remover usuário.')
+    }
+  },
+
+  async create(input: UserInput): Promise<User> {
+    try {
+      const response = await http.post(ENDPOINTS.list, input)
+      return itemResponseSchema.parse(response.data).data
+    } catch {
+      throw new AppError('unknown', 'Falha ao criar usuário.')
     }
   },
 }

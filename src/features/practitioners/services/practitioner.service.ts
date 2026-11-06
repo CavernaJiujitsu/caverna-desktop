@@ -7,6 +7,13 @@ import {
   type PractitionerInput,
   type PractitionerUpdateInput,
 } from '@/features/practitioners/schemas/practitioner.schema'
+import {
+  trailResponseSchema,
+  homeResponseSchema,
+  type Trail,
+  type Home,
+  type NoActiveBelt,
+} from '@/features/practitioners/schemas/trail.schema'
 
 const ENDPOINTS = {
   list: '/practitioners',
@@ -100,6 +107,24 @@ export const practitionerService = {
       await http.delete(ENDPOINTS.item(id))
     } catch {
       throw new AppError('unknown', 'Falha ao remover aluno.')
+    }
+  },
+
+  async getMyTrail(signal?: AbortSignal): Promise<Trail | NoActiveBelt> {
+    try {
+      const response = await http.get(ENDPOINTS.trail, { signal })
+      return trailResponseSchema.parse(response.data).data
+    } catch {
+      throw new AppError('unknown', 'Falha ao carregar trilha do aluno.')
+    }
+  },
+
+  async getHome(id: string, signal?: AbortSignal): Promise<Home> {
+    try {
+      const response = await http.get(ENDPOINTS.home(id), { signal })
+      return homeResponseSchema.parse(response.data).data
+    } catch {
+      throw new AppError('unknown', 'Falha ao carregar tela inicial do aluno.')
     }
   },
 }
