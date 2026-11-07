@@ -2,7 +2,6 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AuthLayout } from '@/app/layouts/auth-layout'
-import { DashboardLayout } from '@/app/layouts/dashboard-layout'
 import { ProtectedRoute } from '@/app/router/protected-route'
 import { routes } from '@/app/router/routes'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
@@ -34,8 +33,23 @@ const NotFoundPage = lazy(
   () => import('@/shared/components/feedback/not-found-page'),
 )
 
-const loading = <LoadingState label="Loading page" />
+const loading = <LoadingState label="Carregando página" />
 const wrap = (page: ReactNode) => <Suspense fallback={loading}>{page}</Suspense>
+
+const developmentRoutes = import.meta.env.DEV
+  ? [
+      { path: 'preview/academies', element: wrap(<AcademiesPage />) },
+      { path: 'preview/management', element: wrap(<ManagementPreviewPage />) },
+      {
+        path: 'preview/management/classes',
+        element: wrap(<ClassesManagementPage />),
+      },
+      {
+        path: 'preview/management/evaluations',
+        element: wrap(<EvaluationsQueuePage />),
+      },
+    ]
+  : []
 
 export const router = createBrowserRouter([
   {
@@ -45,23 +59,28 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to={routes.login} replace /> },
       { path: 'login', element: wrap(<LoginPage />) },
+      { path: 'management', element: wrap(<ContextSelectionPage />) },
       { path: 'access-denied', element: wrap(<AccessDeniedPage />) },
       { path: 'session-expired', element: wrap(<SessionExpiredPage />) },
-      { path: 'management', element: wrap(<ContextSelectionPage />) },
-      { path: 'preview/academies', element: wrap(<AcademiesPage demo />) },
-      { path: 'preview/management', element: wrap(<ManagementPreviewPage />) },
-      { path: 'preview/management/classes', element: wrap(<ClassesManagementPage />) },
-      { path: 'preview/management/evaluations', element: wrap(<EvaluationsQueuePage />) },
+      ...developmentRoutes,
     ],
   },
   {
-    element: <DashboardLayout />,
+    path: routes.academies,
+    element: <ProtectedRoute>{wrap(<AcademiesPage />)}</ProtectedRoute>,
     errorElement: <ErrorPage />,
-    children: [
-      { path: 'dashboard', element: <ProtectedRoute /> },
-      { path: 'academies', element: <ProtectedRoute /> },
-    ],
   },
+  {
+    path: routes.classes,
+    element: <ProtectedRoute>{wrap(<ClassesManagementPage />)}</ProtectedRoute>,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: routes.evaluations,
+    element: <ProtectedRoute>{wrap(<EvaluationsQueuePage />)}</ProtectedRoute>,
+    errorElement: <ErrorPage />,
+  },
+  { path: '/dashboard', element: <Navigate to={routes.academies} replace /> },
   { path: '/home', element: <Navigate to={routes.home} replace /> },
   { path: '*', element: wrap(<NotFoundPage />) },
 ])

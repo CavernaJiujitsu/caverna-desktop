@@ -1,36 +1,46 @@
-import { ArrowRight } from 'lucide-react'
 import { useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { LoginForm } from '@/features/auth/components/login-form'
 import { authService } from '@/features/auth/services/auth.service'
-import { managementContextService } from '@/features/management/services/management-context.service'
+import {
+  buildLocalFallbackContext,
+  managementContextService,
+} from '@/features/management/services/management-context.service'
 import { useSession } from '@/shared/session/session'
 import type { ManagementContext } from '@/shared/types/management-context'
 import { notify } from '@/shared/lib/notifications'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { setSession, setContexts, clearSession } = useSession()
+  const { setSession, setContexts, setSelectedContext, clearSession } =
+    useSession()
 
   const handleLogin = useCallback(
     async (email: string, password: string) => {
       clearSession()
       const response = await authService.login(email, password)
-      setSession({ user: response.user, accessToken: response.accessToken })
+      setSession({
+        user: { id: response.userId, email, name: null },
+        accessToken: response.accessToken,
+        practitionerId: response.practitionerId,
+      })
 
+      const fallback = buildLocalFallbackContext(response.userId)
       let contexts: ManagementContext[]
       try {
         contexts = await managementContextService.list()
       } catch {
         contexts = []
       }
+      if (contexts.length === 0) contexts = [fallback]
       setContexts(contexts)
+      setSelectedContext(contexts[0] ?? fallback)
 
       notify.success('Bem-vindo de volta.')
-      navigate(routes.management, { replace: true })
+      navigate(routes.academies, { replace: true })
     },
-    [clearSession, setSession, setContexts, navigate],
+    [clearSession, setSession, setContexts, setSelectedContext, navigate],
   )
 
   return (
@@ -70,15 +80,6 @@ export default function LoginPage() {
             Sua academia ou perfil será selecionado após entrar.
           </p>
         </section>
-        <div className="mt-6 border-t pt-5 text-sm">
-          <Link
-            className="inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline"
-            to={routes.managementPreview}
-          >
-            Explorar prévia dos contextos{' '}
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-        </div>
       </div>
     </main>
   )

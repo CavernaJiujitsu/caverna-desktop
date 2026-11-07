@@ -6,11 +6,9 @@ import {
 } from '@/features/auth/schemas/auth.schema'
 import { isAxiosError } from 'axios'
 
-// CONTRACT PENDING #78/#98: confirm these endpoints with the authentication
-// integration owner (#78) before connecting to a real backend.
+// POST /api/v1/auth/login is the confirmed practitioner login contract.
 const ENDPOINTS = {
   login: '/api/v1/auth/login',
-  logout: '/api/v1/auth/logout',
 } as const
 
 function toAppError(error: unknown): AppError {
@@ -29,6 +27,12 @@ function toAppError(error: unknown): AppError {
       return new AppError(
         'not-found',
         'The requested resource was not found.',
+        status,
+      )
+    if (status === 429)
+      return new AppError(
+        'rate-limited',
+        'Too many sign-in attempts. Please try again later.',
         status,
       )
     if (status >= 500)
@@ -53,15 +57,7 @@ export const authService = {
         email,
         password,
       })
-      return loginResponseSchema.parse(data)
-    } catch (error) {
-      throw toAppError(error)
-    }
-  },
-
-  async logout(): Promise<void> {
-    try {
-      await http.post(ENDPOINTS.logout)
+      return loginResponseSchema.parse(data).data
     } catch (error) {
       throw toAppError(error)
     }

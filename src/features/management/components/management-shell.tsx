@@ -1,14 +1,19 @@
 import { LogOut } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Link } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { Button } from '@/shared/components/ui/button'
 import { useSession } from '@/shared/session/session'
 
+const navigation = [
+  { to: routes.academies, label: 'Academias' },
+  { to: routes.classes, label: 'Aulas' },
+  { to: routes.evaluations, label: 'Avaliações' },
+] as const
+
 export function ManagementShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
-  const { clearSession } = useSession()
+  const { clearSession, selectedContext } = useSession()
 
   function handleExit() {
     clearSession()
@@ -17,31 +22,42 @@ export function ManagementShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="management-surface min-h-svh lg:flex">
-      <aside className="border-b border-border bg-card px-6 py-6 lg:min-h-svh lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r">
+      <aside className="border-b border-border bg-card px-6 py-6 lg:flex lg:min-h-svh lg:w-60 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
         <Link
           className="font-bold tracking-wide text-primary"
-          to={routes.login}
+          to={routes.academies}
         >
           CAVERNA
         </Link>
-        <p className="mt-6 text-sm text-muted-foreground">
-          Administrador · contexto selecionado
+        <p className="mt-6 text-sm font-medium">
+          {selectedContext?.label ?? 'Sessão autenticada'}
         </p>
+        {selectedContext?.detail ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {selectedContext.detail}
+          </p>
+        ) : null}
         <nav className="mt-5 hidden lg:block" aria-label="Áreas de gestão">
           <ul className="space-y-3 text-sm">
-            <li className="rounded-md bg-primary px-4 py-2.5 font-medium text-primary-foreground">
-              <Link to={routes.classesPreview}>Aulas</Link>
-            </li>
-            <li className="rounded-md bg-accent px-4 py-2.5">
-              <Link to={routes.evaluationsPreview}>Avaliações</Link>
-            </li>
-            <li className="rounded-md bg-accent px-4 py-2.5">Alunos</li>
-            <li className="rounded-md bg-accent px-4 py-2.5">Professores</li>
-            <li className="rounded-md bg-accent px-4 py-2.5">Unidades</li>
+            {navigation.map((item) => (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `block rounded-md px-4 py-2.5 ${
+                      isActive
+                        ? 'bg-primary font-medium text-primary-foreground'
+                        : 'bg-accent hover:bg-accent/80'
+                    }`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              </li>
+            ))}
           </ul>
         </nav>
-        <div className="mt-auto flex flex-wrap gap-2 text-sm lg:flex-col">
-          <div className="h-16 w-full lg:hidden" aria-hidden="true" />
+        <div className="mt-8 flex flex-wrap gap-2 text-sm lg:mt-auto lg:flex-col">
           <Button
             type="button"
             variant="outline"

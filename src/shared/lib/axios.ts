@@ -52,6 +52,12 @@ export function normalizeHttpError(error: unknown): AppError {
       'You do not have access to this resource.',
       status,
     )
+  if (status === 429)
+    return new AppError(
+      'rate-limited',
+      'Too many requests. Please try again later.',
+      status,
+    )
   if (status === 404)
     return new AppError(
       'not-found',

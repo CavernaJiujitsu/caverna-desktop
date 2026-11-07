@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Caverna Desktop is the React web client for Caverna Jiu-Jitsu, a platform for managing and following practitioners' journeys. This repository contains the frontend foundation, a management-entry UI preview and an explicitly local academy demo; production management flows await agreed NestJS API contracts.
+Caverna Desktop is the React web client for Caverna Jiu-Jitsu, a platform for managing and following practitioners' journeys. The desktop now signs in against the NestJS API and exposes authenticated routes for academies, classes and the evaluation queue.
 
 ## Problem & Motivation
 
@@ -22,7 +22,7 @@ flowchart LR
   Axios --> API[NestJS API]
 ```
 
-The diagram is the intended production flow. The current academy service is an in-memory demo adapter and performs no HTTP request. The management entry and context preview are UI-only and do not send credentials or create sessions. `app` composes features and shared resources; features depend on `shared`; `shared` depends on neither app nor features.
+The diagram is the production flow. Pages call feature hooks, hooks coordinate TanStack Query, and feature services call the centralized Axios client. The session uses the backend bearer-token login contract and lives in memory only. The backend does not expose management contexts yet (#98), so login falls back to a clearly labeled local context to keep authenticated screens usable. Development-only preview routes remain available for visual QA and are never linked from the product. `app` composes features and shared resources; features depend on `shared`; `shared` depends on neither app nor features.
 
 ## Architectural Decisions
 
@@ -33,7 +33,7 @@ Feature ownership, query caching and fail-closed protected routes are recorded i
 ```text
 src/
   app/                 providers, router and layouts
-  features/            auth, management, dashboard and academies
+  features/            auth, management, academies, classes, evaluations, teachers, belts and certificates
   shared/              UI, HTTP, errors, notifications and query client
   styles/              provisional semantic tokens
   test/                test setup
@@ -53,7 +53,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open the URL printed by Vite. `/` redirects to `/login`, the management-entry UI preview. `/preview/management` presents local context examples and UI states; `/preview/academies` retains the in-memory academy demo. `/access-denied` and `/session-expired` show safe informational states. `/dashboard` and `/academies` remain closed until verified session and context integration exists. The Vite dev server works without `.env` using documented local defaults.
+Open the URL printed by Vite. `/` redirects to `/login`. After a successful sign-in the app opens `/academies`; the authenticated area also exposes `/classes` and `/evaluations`, sharing the management shell. `/management` lists authorized contexts when the backend provides them and otherwise shows the local fallback. `/access-denied` and `/session-expired` show safe informational states. `/preview/*` routes exist only during development for visual QA and are never linked from the product. The Vite dev server works without `.env` using documented local defaults.
 
 ## Environment Variables
 
@@ -78,7 +78,7 @@ Values are validated at startup. `VITE_*` values ship to the browser and must ne
 
 ## API Integration Strategy
 
-Feature services will own calls and runtime validation of external responses. Hooks pass AbortSignal, use domain query keys and invalidate after mutations. The central Axios client has a public base URL, configurable timeout and safe error normalization. No Caverna endpoint or authentication response shape is assumed. See [API integration](docs/api-integration.md).
+Feature services own calls and runtime validation of external responses. Hooks pass AbortSignal, use domain query keys and invalidate after mutations. The central Axios client has a public base URL, configurable timeout and safe error normalization. Login unwraps the backend envelope `{ message, data, timestamp }` and validates the practitioner token payload. Management context endpoints remain pending on the backend. See [API integration](docs/api-integration.md).
 
 ## State Management Strategy
 
@@ -86,11 +86,11 @@ TanStack Query owns server state, freshness, retries and invalidation. React sta
 
 ## Validation & Error Handling
 
-Zod validates the management-entry preview form, academy demo form and environment. The HTTP boundary maps known failure categories into safe user-facing errors without exposing response bodies. Sonner notifications are centralized with consistent durations and stable IDs to avoid duplicates. Forms have labeled controls, inline errors and submission feedback. Valid management-entry submissions only show a notice that API integration is pending.
+Zod validates the login form, academy and unit forms, external API responses and environment. The HTTP boundary maps known failure categories into safe user-facing errors without exposing response bodies. Sonner notifications are centralized with consistent durations and stable IDs to avoid duplicates. Forms have labeled controls, inline errors and submission feedback. A failed management-context lookup does not block the authenticated screens; it activates the documented local fallback context.
 
 ## Testing & Code Quality
 
-Vitest and React Testing Library cover component interaction, form validation, mocked HTTP behavior, context selection and error states. Run `npm run lint`, `npm run typecheck`, `npm run test:run`, `npm run format:check` and `npm run build` before review. Husky and lint-staged check changed files before commits. See [testing guidance](docs/testing.md).
+Vitest and React Testing Library cover component interaction, form validation, mocked HTTP behavior, session fallback, context selection, real-route navigation and error states. Run `npm run lint`, `npm run typecheck`, `npm run test:run`, `npm run format:check` and `npm run build` before review. Husky and lint-staged check changed files before commits. See [testing guidance](docs/testing.md).
 
 ## Spec-Driven Development Workflow
 
@@ -114,10 +114,11 @@ For a card-to-PR request, use them in that order. Each skill has entry/exit crit
 
 ## Roadmap
 
-1. Agree on management authentication, context DTOs, session transport and backend authorization for Trello #99.
-2. Integrate verified sessions, context-aware queries and real protected routes.
-3. Specify academy and dashboard contracts before replacing the local demo.
+1. Receive authorized management contexts from the backend (#98) and replace the temporary local context.
+2. Enforce per-operation authorization on the management API so the desktop screens stop relying on unguarded endpoints.
+3. Decide session renewal/persistence and logout behavior with the backend.
 4. Finish the detailed Figma review when the design connector is available; replace the current visual approximation with approved tokens and components.
+5. Build the remaining management areas (students, teachers, units) on top of the real routes.
 
 ## Contributing
 

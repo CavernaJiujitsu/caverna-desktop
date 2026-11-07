@@ -18,6 +18,8 @@ function messageForLoginError(error: unknown): string {
   if (error instanceof AppError) {
     if (error.kind === 'unauthorized') return 'E-mail ou senha inválidos.'
     if (error.kind === 'forbidden') return 'Você não tem acesso à gestão.'
+    if (error.kind === 'rate-limited')
+      return 'Muitas tentativas. Aguarde alguns instantes e tente novamente.'
     if (error.kind === 'network' || error.kind === 'timeout')
       return 'Não foi possível conectar. Tente novamente.'
   }

@@ -28,7 +28,7 @@ export default function AccessDeniedPage() {
         </p>
         <div className="mt-5 flex flex-col gap-3 sm:max-w-52">
           <Button asChild>
-            <Link to={routes.managementPreview}>Trocar contexto</Link>
+            <Link to={routes.management}>Trocar contexto</Link>
           </Button>
           <Button asChild variant="secondary">
             <Link to={routes.login}>Voltar para entrada</Link>

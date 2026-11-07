@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { expect, it, vi } from 'vitest'
 import AcademiesPage from '@/features/academies/pages/academies-page'
+import { SessionProvider } from '@/shared/session/session-context'
 
 vi.mock('@/features/academies/hooks/use-academies', () => ({
   useAcademies: () => ({ isPending: false, isError: true, refetch: vi.fn() }),
@@ -17,12 +19,16 @@ vi.mock('@/features/academies/hooks/use-academies', () => ({
 
 it('renders an actionable load error state', () => {
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <AcademiesPage demo />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <SessionProvider>
+        <QueryClientProvider client={new QueryClient()}>
+          <AcademiesPage />
+        </QueryClientProvider>
+      </SessionProvider>
+    </MemoryRouter>,
   )
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Could not load academies',
   )
-  expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
 })
