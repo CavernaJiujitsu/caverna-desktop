@@ -1,23 +1,15 @@
-import { useNavigate } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { Navigate } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { useSession } from '@/shared/session/session'
-import { PageContainer } from '@/shared/components/layout/page-container'
 
-type ProtectedRouteProps = { children?: React.ReactNode }
+type ProtectedRouteProps = { children: ReactNode }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const navigate = useNavigate()
   const { session, selectedContext } = useSession()
 
-  if (!session) {
-    navigate(routes.login, { replace: true })
-    return null
-  }
+  if (!session) return <Navigate to={routes.login} replace />
+  if (!selectedContext) return <Navigate to={routes.management} replace />
 
-  if (!selectedContext) {
-    navigate(routes.management, { replace: true })
-    return null
-  }
-
-  return <PageContainer>{children}</PageContainer>
+  return <>{children}</>
 }

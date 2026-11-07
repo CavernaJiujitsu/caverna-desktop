@@ -2,7 +2,11 @@ import { createContext, useContext } from 'react'
 import type { ManagementContext } from '@/shared/types/management-context'
 
 export type SessionUser = { id: string; email: string; name: string | null }
-export type Session = { user: SessionUser; accessToken: string }
+export type Session = {
+  user: SessionUser
+  accessToken: string
+  practitionerId: string
+}
 
 type SessionContextValue = {
   session: Session | null

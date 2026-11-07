@@ -37,7 +37,11 @@ describe('session context', () => {
   it('sets and clears a session', () => {
     const { result } = renderSession()
     act(() => {
-      result.current.setSession({ user, accessToken: 'token-abc' })
+      result.current.setSession({
+        user,
+        accessToken: 'token-abc',
+        practitionerId: 'practitioner-1',
+      })
     })
     expect(result.current.session?.accessToken).toBe('token-abc')
     expect(getAccessToken()).toBe('token-abc')
