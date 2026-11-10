@@ -8,7 +8,7 @@ export const loginResponseSchema = z.object({
     tokenType: z.literal('Bearer'),
     expiresIn: z.number().int().positive(),
     userId: z.string().uuid(),
-    practitionerId: z.string().uuid(),
+    practitionerId: z.string().uuid().optional(),
   }),
   timestamp: z.string().optional(),
 })

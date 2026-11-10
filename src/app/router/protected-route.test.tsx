@@ -33,6 +33,44 @@ function renderAt(path: string, route: React.ReactNode) {
 }
 
 describe('ProtectedRoute', () => {
+  it('does not render the global academy area for a teacher context', async () => {
+    function Teacher({ children }: { children: React.ReactNode }) {
+      const { selectedContext, setSession, setSelectedContext } = useSession()
+      useEffect(() => {
+        setSession({
+          user: { id: 'teacher-user', email: 'qa@caverna.test', name: null },
+          accessToken: 'teacher-token',
+        })
+        setSelectedContext({
+          id: 'teacher-context',
+          role: 'teacher',
+          label: 'Professor',
+          detail: 'Unidade A',
+        })
+      }, [setSession, setSelectedContext])
+      return selectedContext ? children : null
+    }
+    renderAt(
+      '/academies',
+      <>
+        <Route
+          path="/academies"
+          element={
+            <Teacher>
+              <ProtectedRoute allowedRoles={['platform', 'academy']}>
+                <p>Forbidden academy content</p>
+              </ProtectedRoute>
+            </Teacher>
+          }
+        />
+        <Route path="/access-denied" element={<p>Denied route</p>} />
+      </>,
+    )
+    expect(await screen.findByText('Denied route')).toBeInTheDocument()
+    expect(
+      screen.queryByText('Forbidden academy content'),
+    ).not.toBeInTheDocument()
+  })
   it('redirects to login when there is no session', () => {
     renderAt(
       '/academies',

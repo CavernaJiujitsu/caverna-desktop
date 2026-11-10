@@ -5,15 +5,13 @@ export type SessionUser = { id: string; email: string; name: string | null }
 export type Session = {
   user: SessionUser
   accessToken: string
-  practitionerId: string
+  practitionerId?: string
 }
 
 type SessionContextValue = {
   session: Session | null
-  contexts: ManagementContext[]
   selectedContext: ManagementContext | null
   setSession: (session: Session | null) => void
-  setContexts: (contexts: ManagementContext[]) => void
   setSelectedContext: (context: ManagementContext | null) => void
   clearSession: () => void
 }

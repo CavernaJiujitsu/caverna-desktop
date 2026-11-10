@@ -1,5 +1,7 @@
 # Especificação técnica — Entrada e contexto da gestão
 
+> Registro histórico da interface inicial. A integração atual com contrato real, sem contexto local de fallback, está em [../98-real-management-contexts/spec.md](../98-real-management-contexts/spec.md). O contrato backend vem do PR #22. As pendências descritas abaixo correspondem à etapa anterior, não à configuração corrente.
+
 Origem: [PRD](prd.md) · [Trello #99](https://trello.com/c/1oAZ32Rz/99-fe-criar-entrada-desktop-e-sele%C3%A7%C3%A3o-de-contexto-da-gest%C3%A3o) · Estado: implementação inicial concluída, dependente de confirmação de contratos com #78 e #98
 
 ## Estado atual e proposta

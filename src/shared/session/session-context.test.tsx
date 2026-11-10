@@ -1,73 +1,101 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { SessionProvider } from '@/shared/session/session-context'
-import { useSession, type Session } from '@/shared/session/session'
-import { getAccessToken } from '@/shared/session/access-token'
-
-const user: Session['user'] = {
-  id: 'user-1',
-  email: 'pessoa@exemplo.com',
-  name: 'Pessoa',
+import { SessionProvider } from './session-context'
+import { useSession, type Session } from './session'
+import {
+  getAccessToken,
+  getManagementContextId,
+  setAccessToken,
+  setManagementContextId,
+} from './access-token'
+import { queryClient } from '@/shared/lib/query-client'
+const session: Session = {
+  user: { id: 'user-1', email: 'qa@caverna.test', name: null },
+  accessToken: 'token',
 }
-
-function renderSession() {
-  return renderHook(() => useSession(), {
-    wrapper: ({ children }: { children: React.ReactNode }) => (
-      <SessionProvider>{children}</SessionProvider>
-    ),
-  })
+function mount() {
+  return renderHook(() => useSession(), { wrapper: SessionProvider })
 }
-
-describe('session context', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('starts with no session, no contexts and no selected context', () => {
-    const { result } = renderSession()
+afterEach(() => {
+  queryClient.clear()
+  setAccessToken(null)
+  setManagementContextId(null)
+})
+describe('session ownership and query isolation', () => {
+  it('starts without identity or selected context', () => {
+    const { result } = mount()
     expect(result.current.session).toBeNull()
-    expect(result.current.contexts).toEqual([])
     expect(result.current.selectedContext).toBeNull()
   })
-
-  it('sets and clears a session', () => {
-    const { result } = renderSession()
+  it('accepts management without practitioner and clears identity, selector and cache on logout', () => {
+    const { result } = mount()
     act(() => {
-      result.current.setSession({
-        user,
-        accessToken: 'token-abc',
-        practitionerId: 'practitioner-1',
+      result.current.setSession(session)
+      result.current.setSelectedContext({
+        id: 'a',
+        role: 'academy',
+        label: 'A',
+        detail: 'A',
       })
     })
-    expect(result.current.session?.accessToken).toBe('token-abc')
-    expect(getAccessToken()).toBe('token-abc')
-    expect(result.current.session?.user.email).toBe('pessoa@exemplo.com')
-
-    act(() => {
-      result.current.clearSession()
-    })
+    queryClient.setQueryData(['private-data'], 'private')
+    expect(result.current.session?.practitionerId).toBeUndefined()
+    expect(getAccessToken()).toBe('token')
+    expect(getManagementContextId()).toBe('a')
+    act(() => result.current.clearSession())
     expect(result.current.session).toBeNull()
     expect(result.current.selectedContext).toBeNull()
-    expect(result.current.contexts).toEqual([])
     expect(getAccessToken()).toBeNull()
+    expect(getManagementContextId()).toBeNull()
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
   })
-
-  it('sets contexts and a selected context', () => {
-    const { result } = renderSession()
-    const contexts = [
-      { id: 'c1', role: 'academy' as const, label: 'Academia A', detail: 'x' },
-    ]
-
+  it('removes previous scope data but keeps the authoritative context list during selection', () => {
+    const { result } = mount()
+    act(() => result.current.setSession(session))
+    queryClient.setQueryData(['private-data'], 'private')
+    queryClient.setQueryData(
+      ['management-contexts', session.user.id],
+      ['server-context'],
+    )
+    act(() =>
+      result.current.setSelectedContext({
+        id: 'a',
+        role: 'academy',
+        label: 'A',
+        detail: 'A',
+      }),
+    )
+    expect(queryClient.getQueryData(['private-data'])).toBeUndefined()
+    expect(
+      queryClient.getQueryData(['management-contexts', session.user.id]),
+    ).toEqual(['server-context'])
+    queryClient.setQueryData(['classes'], ['scope-a'])
+    act(() => result.current.setSelectedContext(null))
+    expect(queryClient.getQueryData(['classes'])).toBeUndefined()
+    expect(getManagementContextId()).toBeNull()
+  })
+  it('cannot carry selection or cached data into a different account', () => {
+    const { result } = mount()
     act(() => {
-      result.current.setContexts(contexts)
-      result.current.setSelectedContext(contexts[0] ?? null)
+      result.current.setSession(session)
+      result.current.setSelectedContext({
+        id: 'a',
+        role: 'academy',
+        label: 'A',
+        detail: 'A',
+      })
     })
-
-    expect(result.current.contexts).toHaveLength(1)
-    expect(result.current.selectedContext?.id).toBe('c1')
+    queryClient.setQueryData(['management-contexts', 'user-1'], ['old'])
+    act(() =>
+      result.current.setSession({
+        ...session,
+        user: { ...session.user, id: 'user-2' },
+        accessToken: 'new-token',
+      }),
+    )
+    expect(result.current.selectedContext).toBeNull()
+    expect(getManagementContextId()).toBeNull()
+    expect(getAccessToken()).toBe('new-token')
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
   })
 })

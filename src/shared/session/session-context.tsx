@@ -5,38 +5,42 @@ import {
   type Session,
   type SessionContextValue,
 } from './session'
-import { setAccessToken } from './access-token'
+import { queryClient } from '@/shared/lib/query-client'
+import {
+  getManagementContextId,
+  setAccessToken,
+  setManagementContextId,
+} from './access-token'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<Session | null>(null)
-  const [contexts, setContextsState] = useState<ManagementContext[]>([])
   const [selectedContext, setSelectedContextState] =
     useState<ManagementContext | null>(null)
 
   const setSession = useCallback((s: Session | null) => {
+    queryClient.clear()
+    setManagementContextId(null)
+    setSelectedContextState(null)
     setSessionState(s)
     setAccessToken(s?.accessToken ?? null)
   }, [])
-  const setContexts = useCallback(
-    (c: ManagementContext[]) => setContextsState(c),
-    [],
-  )
-  const setSelectedContext = useCallback(
-    (c: ManagementContext | null) => setSelectedContextState(c),
-    [],
-  )
+  const setSelectedContext = useCallback((c: ManagementContext | null) => {
+    if (getManagementContextId() !== (c?.id ?? null)) {
+      queryClient.removeQueries({
+        predicate: (query) => query.queryKey[0] !== 'management-contexts',
+      })
+    }
+    setManagementContextId(c?.id ?? null)
+    setSelectedContextState(c)
+  }, [])
   const clearSession = useCallback(() => {
     setSession(null)
-    setContextsState([])
-    setSelectedContextState(null)
   }, [setSession])
 
   const value: SessionContextValue = {
     session,
-    contexts,
     selectedContext,
     setSession,
-    setContexts,
     setSelectedContext,
     clearSession,
   }

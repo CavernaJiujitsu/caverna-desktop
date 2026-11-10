@@ -12,6 +12,8 @@ type ContextSelectionProps = {
   status: 'loading' | 'error' | 'success'
   onSelect: (context: ManagementContext) => void
   onRetry: () => void
+  pendingId?: string
+  hasStudentProfile?: boolean
 }
 
 const roleLabel: Record<ManagementRole, string> = {
@@ -31,6 +33,8 @@ export function ContextSelection({
   status,
   onSelect,
   onRetry,
+  pendingId,
+  hasStudentProfile = false,
 }: ContextSelectionProps) {
   return (
     <section aria-labelledby="context-title">
@@ -68,6 +72,8 @@ export function ContextSelection({
                     variant="outline"
                     className="group h-full min-h-44 w-full flex-col items-stretch justify-between gap-5 rounded-xl border border-border bg-card p-5 text-left shadow-none hover:border-primary/60 hover:bg-card"
                     onClick={() => onSelect(context)}
+                    disabled={Boolean(pendingId)}
+                    aria-busy={pendingId === context.id}
                     aria-label={`Selecionar ${context.label}, ${roleLabel[context.role]}`}
                   >
                     <span>
@@ -75,22 +81,27 @@ export function ContextSelection({
                         {roleTitle[context.role]}
                       </span>
                       <span className="mt-3 block text-sm font-normal text-muted-foreground">
+                        {context.label}
+                      </span>
+                      <span className="mt-2 block text-sm font-normal text-muted-foreground">
                         {context.detail}
                       </span>
                     </span>
                     <span className="block rounded-md bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground group-hover:bg-primary/90">
-                      Acessar
+                      {pendingId === context.id ? 'Validando...' : 'Acessar'}
                     </span>
                   </Button>
                 </li>
               ))}
             </ul>
-            <div className="mt-5 rounded-xl border border-[#08b9ae] bg-card p-5">
-              <h2 className="font-semibold">Seu perfil de aluno</h2>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Sua trilha e suas reservas continuam no aplicativo do aluno.
-              </p>
-            </div>
+            {hasStudentProfile && (
+              <div className="mt-5 rounded-xl border border-[#08b9ae] bg-card p-5">
+                <h2 className="font-semibold">Seu perfil de aluno</h2>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Sua trilha e suas reservas continuam no aplicativo do aluno.
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>

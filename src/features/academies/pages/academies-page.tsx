@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSession } from '@/shared/session/session'
 import { AcademyForm } from '@/features/academies/components/academy-form'
 import { UnitForm } from '@/features/academies/components/unit-form'
 import {
@@ -12,6 +13,8 @@ import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { PageHeader } from '@/shared/components/layout/page-header'
 
 export default function AcademiesPage() {
+  const { selectedContext } = useSession()
+  const canCreateAcademy = selectedContext?.role === 'platform'
   const academies = useAcademies()
   const mutations = useAcademyMutations()
   const [editingAcademy, setEditingAcademy] = useState<string | null>(null)
@@ -25,10 +28,12 @@ export default function AcademiesPage() {
         description="Cadastre e consulte cavernas pela API do Caverna."
       />
       <div className="grid gap-8 md:grid-cols-[1fr_1.5fr]">
-        <section className="rounded-lg border p-6">
-          <h2 className="mb-4 text-lg font-medium">Add an academy</h2>
-          <AcademyForm />
-        </section>
+        {canCreateAcademy && (
+          <section className="rounded-lg border p-6">
+            <h2 className="mb-4 text-lg font-medium">Add an academy</h2>
+            <AcademyForm />
+          </section>
+        )}
         <section aria-label="Academy list">
           {academies.isPending ? (
             <LoadingState label="Loading academies" />

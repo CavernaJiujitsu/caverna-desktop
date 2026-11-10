@@ -1,0 +1,15 @@
+# Revisão — correção do #98 — [BE] Autorizar acessos por perfil, academia e professor responsável
+
+Escopo: diff desktop contra dev e4fa126, contrato backend PR #22, arquivos novos/alterados e critérios da spec. Revisão final após lint, tipos, testes, build e navegador.
+
+| ID  | Severidade        | Achado                                                                                                                 | Tratamento                                                                                                                   |
+| --- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Alta, legado      | Operações antigas do backend ainda não aplicam todos os escopos                                                        | Não anunciar card concluído ou isolamento integral; manter rollout do backend antes da release                               |
+| R2  | Média, integração | Cliente exige contrato backend PR #22; antiga coleção global teachers agora exige plataforma                           | Integrar dependências primeiro; docente usa identidade própria/unidade protegida, gestor não recebe catálogo global fictício |
+| R3  | Média, legado     | Plataforma ainda lista unidades com o limite preexistente de 100 e gestão de professor por academia não está concluída | Incrementos específicos de paginação/gestão; não apresentar como critérios integralmente entregues                           |
+| R4  | Informativa       | Sessão continua somente em memória; recarregar exige novo login                                                        | Comportamento documentado, sem refresh/persistência nova                                                                     |
+| R5  | Informativa       | Não há revisão Figma/Azure neste incremento                                                                            | Testes de UI/contrato reais, sem alegar fidelidade ou deploy                                                                 |
+
+Conformidades: não há fallback de contexto no produto; Zod valida papel/escopo; switch rejeita ID divergente; dados remotos no Query e seleção na sessão; cancelamento, limpeza de cache e credenciais por identidade/contexto; erros públicos e atrasados tratados; shared não importa feature/app; UI → hooks → serviços → Axios; nomes acessíveis, pending e retry. Nenhum segredo, token, dado real ou nova montagem de HTML remoto; URLs usam IDs validados do contrato. Workflow de qualidade para dev não faz deploy, com permissões mínimas; release main preservada.
+
+Spec atualizada antes dos ajustes do catálogo/rota e do check de qualidade. Os problemas intermediários de automação foram registrados sem relaxar asserções. Incremento pronto para draft/revisão em dev após conferir novamente o remoto; conclusão do card e release dependem das pendências de backend. Não há merge automático nem movimentação de Trello alegada.

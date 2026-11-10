@@ -5,4 +5,7 @@ export type ManagementContext = {
   role: ManagementRole
   label: string
   detail: string
+  caveId?: string
+  caveUnitId?: string
+  teacherId?: string
 }

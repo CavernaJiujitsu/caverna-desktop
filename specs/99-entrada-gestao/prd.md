@@ -1,5 +1,7 @@
 # PRD — Entrada desktop e seleção de contexto da gestão
 
+> Registro histórico da interface inicial. A integração corrente com contrato backend confirmado está em [../98-real-management-contexts/spec.md](../98-real-management-contexts/spec.md); não há mais contexto local de fallback no fluxo de produto.
+
 Fonte: [Trello #99](https://trello.com/c/1oAZ32Rz/99-fe-criar-entrada-desktop-e-sele%C3%A7%C3%A3o-de-contexto-da-gest%C3%A3o) · Revisão: 2026-10-29 · Estado: implementação inicial concluída; revisão de contratos pendente
 
 Cartão em **In Progress**, etiqueta FRONT, responsável Gabriel Godoi. Não há checklists, comentários ou anexos no cartão; os critérios estão na descrição.

@@ -1,23 +1,40 @@
+import { AxiosHeaders, isAxiosError } from 'axios'
 import { http } from '@/shared/lib/axios'
+import {
+  getAccessToken,
+  getManagementContextId,
+} from '@/shared/session/access-token'
 import { router } from '@/app/router'
 import { routes } from '@/app/router/routes'
 
-// Handles global authentication/authorization responses coming from the API.
-// 401 -> session expired (user must sign in again).
-// 403 -> access denied (no authorized context for the requested resource).
-export function setupAuthInterceptors() {
+export function setupAuthInterceptors(handlers: {
+  onUnauthorized: () => void
+  onForbidden: () => void
+}) {
   const interceptor = http.interceptors.response.use(
     (response) => response,
-    (error) => {
+    (error: unknown) => {
+      if (!isAxiosError(error)) return Promise.reject(error)
+      const headers = AxiosHeaders.from(error.config?.headers)
+      const token = getAccessToken()
+      const current =
+        token && headers.get('Authorization') === `Bearer ${token}`
       const status = error.response?.status
-      if (status === 401) {
-        router.navigate(routes.sessionExpired, { replace: true })
-      } else if (status === 403) {
-        router.navigate(routes.accessDenied, { replace: true })
+      if (current && status === 401) {
+        handlers.onUnauthorized()
+        void router.navigate(routes.sessionExpired, { replace: true })
+      } else if (current && status === 403) {
+        const controlRequest = /\/management\/contexts(?:\/switch)?$/.test(
+          error.config?.url ?? '',
+        )
+        const sentContext = headers.get('X-Management-Context') ?? null
+        if (!controlRequest && sentContext === getManagementContextId()) {
+          handlers.onForbidden()
+          void router.navigate(routes.accessDenied, { replace: true })
+        }
       }
       return Promise.reject(error)
     },
   )
-
   return () => http.interceptors.response.eject(interceptor)
 }

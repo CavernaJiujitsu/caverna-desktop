@@ -1,0 +1,58 @@
+[
+  {
+    "case": "student has an empty context list and no invented management access",
+    "passed": true
+  },
+  {
+    "case": "invalid credentials stay on login instead of session-expired",
+    "passed": true
+  },
+  {
+    "case": "context API failure is recoverable without granting local access",
+    "passed": true
+  },
+  {
+    "case": "real multi-role contexts show cave and unit labels with explicit choice",
+    "passed": true
+  },
+  {
+    "case": "refused switch does not enter a protected area",
+    "passed": true
+  },
+  {
+    "case": "teacher navigation uses the protected unit contract and avoids global teacher identities",
+    "passed": true
+  },
+  {
+    "case": "teacher class requests include the confirmed unit and context",
+    "passed": true
+  },
+  {
+    "case": "academy manager reads only selected cave metadata and has no global create form",
+    "passed": true
+  },
+  {
+    "case": "late real switch response cannot restore selection after logout",
+    "passed": true
+  },
+  {
+    "case": "single platform context also requires explicit confirmation",
+    "passed": true
+  },
+  {
+    "case": "platform context opens the platform destination",
+    "passed": true
+  },
+  {
+    "case": "real grant revocation is refused and removed after refresh",
+    "passed": true
+  },
+  {
+    "case": "public login never sends an inherited token or context header",
+    "passed": true
+  },
+  {
+    "case": "management-only account does not display student-profile guidance",
+    "passed": true
+  }
+]

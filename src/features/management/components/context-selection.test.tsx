@@ -9,6 +9,28 @@ const contexts: ManagementContext[] = [
   { id: 'two', role: 'teacher', label: 'Professor B', detail: 'Exemplo' },
 ]
 
+it('does not imply that a management-only account has a student profile', () => {
+  const view = render(
+    <ContextSelection
+      contexts={contexts}
+      status="success"
+      onSelect={vi.fn()}
+      onRetry={vi.fn()}
+    />,
+  )
+  expect(screen.queryByText('Seu perfil de aluno')).not.toBeInTheDocument()
+  view.rerender(
+    <ContextSelection
+      contexts={contexts}
+      status="success"
+      onSelect={vi.fn()}
+      onRetry={vi.fn()}
+      hasStudentProfile
+    />,
+  )
+  expect(screen.getByText('Seu perfil de aluno')).toBeInTheDocument()
+})
+
 it('offers only supplied contexts and supports keyboard selection', async () => {
   const onSelect = vi.fn()
   render(

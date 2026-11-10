@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSession } from '@/shared/session/session'
 import { academyService } from '@/features/academies/services/academy.service'
 import type {
   Academy,
@@ -8,9 +9,13 @@ import type {
 export const academyKeys = { all: ['academies'] as const }
 
 export function useAcademies() {
+  const { selectedContext } = useSession()
   return useQuery({
-    queryKey: academyKeys.all,
-    queryFn: ({ signal }) => academyService.list(signal),
+    queryKey: [...academyKeys.all, selectedContext?.id],
+    queryFn: async ({ signal }) =>
+      selectedContext?.role === 'academy' && selectedContext.caveId
+        ? [await academyService.findOne(selectedContext.caveId, signal)]
+        : academyService.list(signal),
   })
 }
 
