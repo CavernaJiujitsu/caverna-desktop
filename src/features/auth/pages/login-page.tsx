@@ -3,18 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { LoginForm } from '@/features/auth/components/login-form'
 import { authService } from '@/features/auth/services/auth.service'
-import {
-  buildLocalFallbackContext,
-  managementContextService,
-} from '@/features/management/services/management-context.service'
 import { useSession } from '@/shared/session/session'
-import type { ManagementContext } from '@/shared/types/management-context'
 import { notify } from '@/shared/lib/notifications'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { setSession, setContexts, setSelectedContext, clearSession } =
-    useSession()
+  const { setSession, clearSession } = useSession()
 
   const handleLogin = useCallback(
     async (email: string, password: string) => {
@@ -26,21 +20,10 @@ export default function LoginPage() {
         practitionerId: response.practitionerId,
       })
 
-      const fallback = buildLocalFallbackContext(response.userId)
-      let contexts: ManagementContext[]
-      try {
-        contexts = await managementContextService.list()
-      } catch {
-        contexts = []
-      }
-      if (contexts.length === 0) contexts = [fallback]
-      setContexts(contexts)
-      setSelectedContext(contexts[0] ?? fallback)
-
       notify.success('Bem-vindo de volta.')
-      navigate(routes.academies, { replace: true })
+      navigate(routes.management, { replace: true })
     },
-    [clearSession, setSession, setContexts, setSelectedContext, navigate],
+    [clearSession, setSession, navigate],
   )
 
   return (

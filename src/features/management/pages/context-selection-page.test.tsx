@@ -1,131 +1,180 @@
 import { useEffect } from 'react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { SessionProvider } from '@/shared/session/session-context'
 import { useSession } from '@/shared/session/session'
-import ContextSelectionPage from '@/features/management/pages/context-selection-page'
-import { http } from '@/shared/lib/axios'
-import { setAccessToken } from '@/shared/session/access-token'
+import {
+  getManagementContextId,
+  setAccessToken,
+  setManagementContextId,
+} from '@/shared/session/access-token'
+import { queryClient } from '@/shared/lib/query-client'
+import { AppError } from '@/shared/types/app-error'
 import type { ManagementContext } from '@/shared/types/management-context'
+import { managementContextService } from '@/features/management/services/management-context.service'
+import ContextSelectionPage from './context-selection-page'
 
-vi.mock('@/shared/lib/axios', () => ({
-  http: { post: vi.fn() },
-  normalizeHttpError: vi.fn((error: unknown) => error),
+vi.mock('@/features/management/services/management-context.service', () => ({
+  managementContextService: { list: vi.fn(), switch: vi.fn() },
 }))
+const list = vi.mocked(managementContextService.list)
+const choose = vi.mocked(managementContextService.switch)
+const academy: ManagementContext = {
+  id: 'ctx-academy',
+  role: 'academy',
+  label: 'Academia A',
+  detail: 'Gestão da unidade',
+}
+const teacher: ManagementContext = {
+  id: 'ctx-teacher',
+  role: 'teacher',
+  label: 'Professor B',
+  detail: 'Unidade B',
+}
+const defaults = queryClient.getDefaultOptions()
 
-const mockedPost = vi.mocked(http.post)
-
-const contexts = [
-  {
-    id: 'c1',
-    role: 'academy' as const,
-    label: 'Academia A',
-    detail: 'todas as unidades',
-  },
-  {
-    id: 'c2',
-    role: 'teacher' as const,
-    label: 'Professor B',
-    detail: 'unidade ilustrativa',
-  },
-]
-
-function SessionWithContexts({
-  children,
-  contexts,
-}: {
-  children: React.ReactNode
-  contexts: ManagementContext[]
-}) {
-  const { session, setContexts, setSession } = useSession()
+function WithSession({ children }: { children: React.ReactNode }) {
+  const { session, setSession } = useSession()
   useEffect(() => {
     setSession({
-      user: {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        email: 'pessoa@exemplo.com',
-        name: null,
-      },
+      user: { id: 'user-1', email: 'qa@caverna.test', name: null },
       accessToken: 'token',
-      practitionerId: '660e8400-e29b-41d4-a716-446655440001',
     })
-    setContexts(contexts)
-  }, [setContexts, setSession, contexts])
-  return session ? <>{children}</> : null
+  }, [setSession])
+  return session ? children : null
 }
-
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MemoryRouter initialEntries={['/management']}>
-    <SessionProvider>
-      <SessionWithContexts contexts={contexts}>{children}</SessionWithContexts>
-    </SessionProvider>
-  </MemoryRouter>
-)
-
-describe('ContextSelectionPage', () => {
+function mount() {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/management']}>
+        <SessionProvider>
+          <Routes>
+            <Route
+              path="/management"
+              element={
+                <WithSession>
+                  <ContextSelectionPage />
+                </WithSession>
+              }
+            />
+            <Route path="/academies" element={<p>Academies route</p>} />
+            <Route path="/classes" element={<p>Teacher route</p>} />
+            <Route path="/login" element={<p>Login route</p>} />
+          </Routes>
+        </SessionProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+describe('real context selection', () => {
   beforeEach(() => {
-    mockedPost.mockReset()
+    vi.resetAllMocks()
+    queryClient.clear()
+    queryClient.setDefaultOptions({ queries: { retry: false } })
+    list.mockResolvedValue([academy, teacher])
   })
-
   afterEach(() => {
+    queryClient.clear()
+    queryClient.setDefaultOptions(defaults)
     setAccessToken(null)
-    vi.restoreAllMocks()
+    setManagementContextId(null)
   })
-
-  it('renders only the contexts supplied by the session', () => {
-    render(<ContextSelectionPage />, { wrapper })
-
+  it('loads only server contexts with no automatic selection', async () => {
+    mount()
     expect(
-      screen.getByRole('button', { name: /Selecionar Academia A/ }),
+      await screen.findByRole('button', { name: /Selecionar Academia A/ }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Academia A')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /Selecionar Professor B/ }),
     ).toBeInTheDocument()
+    expect(getManagementContextId()).toBeNull()
+    expect(choose).not.toHaveBeenCalled()
   })
-
-  it('switches context and opens the destination for the selected role', async () => {
-    mockedPost.mockResolvedValueOnce({})
-
-    render(
-      <Routes>
-        <Route path="/management" element={<ContextSelectionPage />} />
-        <Route path="/academies" element={<p>Academies route</p>} />
-      </Routes>,
-      { wrapper },
-    )
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /Selecionar Academia A/ }),
-    )
-
-    await vi.waitFor(() => {
-      expect(mockedPost).toHaveBeenCalledWith(
-        '/api/v1/management/contexts/switch',
-        { contextId: 'c1' },
-      )
-    })
-    await vi.waitFor(() => {
-      expect(screen.getByText('Academies route')).toBeInTheDocument()
-    })
+  it('shows an empty state without granting a local context', async () => {
+    list.mockResolvedValue([])
+    mount()
+    expect(
+      await screen.findByText('Nenhum contexto disponível'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Selecionar/ }),
+    ).not.toBeInTheDocument()
+    expect(getManagementContextId()).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument()
   })
-
-  it('keeps the local selection when the switch endpoint is unavailable', async () => {
-    mockedPost.mockRejectedValueOnce(new Error('Not Found'))
-
-    render(
-      <Routes>
-        <Route path="/management" element={<ContextSelectionPage />} />
-        <Route path="/academies" element={<p>Academies route</p>} />
-      </Routes>,
-      { wrapper },
-    )
-
+  it('recovers from a list failure without inventing access', async () => {
+    list.mockRejectedValueOnce(new AppError('network', 'failed'))
+    mount()
     fireEvent.click(
-      screen.getByRole('button', { name: /Selecionar Academia A/ }),
+      await screen.findByRole('button', { name: 'Tentar novamente' }),
     )
-
-    await vi.waitFor(() => {
-      expect(screen.getByText('Academies route')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /Selecionar Academia A/ }),
+    ).toBeInTheDocument()
+    expect(list).toHaveBeenCalledTimes(2)
+    expect(getManagementContextId()).toBeNull()
+  })
+  it('keeps protected areas closed after a refused switch', async () => {
+    choose.mockRejectedValue(new AppError('forbidden', 'denied', 403))
+    mount()
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Selecionar Academia A/ }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Esse acesso não está mais disponível',
+    )
+    expect(screen.queryByText('Academies route')).not.toBeInTheDocument()
+    expect(getManagementContextId()).toBeNull()
+    list.mockResolvedValue([])
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar contextos' }))
+    expect(
+      await screen.findByText('Nenhum contexto disponível'),
+    ).toBeInTheDocument()
+  })
+  it('blocks duplicate selection until the server confirms and uses its role', async () => {
+    let confirm!: (context: ManagementContext) => void
+    choose.mockReturnValue(
+      new Promise((resolve) => {
+        confirm = resolve
+      }),
+    )
+    mount()
+    const option = await screen.findByRole('button', {
+      name: /Selecionar Professor B/,
     })
+    fireEvent.click(option)
+    fireEvent.click(option)
+    await vi.waitFor(() => expect(choose).toHaveBeenCalledTimes(1))
+    expect(
+      screen.getByRole('button', { name: /Selecionar Academia A/ }),
+    ).toBeDisabled()
+    expect(getManagementContextId()).toBeNull()
+    await act(async () => {
+      confirm({ ...teacher, label: 'Nome confirmado' })
+    })
+    expect(await screen.findByText('Teacher route')).toBeInTheDocument()
+    expect(getManagementContextId()).toBe(teacher.id)
+  })
+  it('does not navigate or restore context after logout while selection is pending', async () => {
+    let confirm!: (context: ManagementContext) => void
+    choose.mockReturnValue(
+      new Promise((resolve) => {
+        confirm = resolve
+      }),
+    )
+    mount()
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Selecionar Academia A/ }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    expect(await screen.findByText('Login route')).toBeInTheDocument()
+    await act(async () => {
+      confirm(academy)
+    })
+    expect(screen.getByText('Login route')).toBeInTheDocument()
+    expect(getManagementContextId()).toBeNull()
   })
 })

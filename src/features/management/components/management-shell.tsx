@@ -13,7 +13,7 @@ const navigation = [
 
 export function ManagementShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
-  const { clearSession, selectedContext } = useSession()
+  const { clearSession, selectedContext, setSelectedContext } = useSession()
 
   function handleExit() {
     clearSession()
@@ -25,7 +25,11 @@ export function ManagementShell({ children }: { children: ReactNode }) {
       <aside className="border-b border-border bg-card px-6 py-6 lg:flex lg:min-h-svh lg:w-60 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
         <Link
           className="font-bold tracking-wide text-primary"
-          to={routes.academies}
+          to={
+            selectedContext?.role === 'teacher'
+              ? routes.classes
+              : routes.academies
+          }
         >
           CAVERNA
         </Link>
@@ -37,27 +41,47 @@ export function ManagementShell({ children }: { children: ReactNode }) {
             {selectedContext.detail}
           </p>
         ) : null}
-        <nav className="mt-5 hidden lg:block" aria-label="Áreas de gestão">
-          <ul className="space-y-3 text-sm">
-            {navigation.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `block rounded-md px-4 py-2.5 ${
-                      isActive
-                        ? 'bg-primary font-medium text-primary-foreground'
-                        : 'bg-accent hover:bg-accent/80'
-                    }`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        {selectedContext && (
+          <nav className="mt-5 hidden lg:block" aria-label="Áreas de gestão">
+            <ul className="space-y-3 text-sm">
+              {navigation
+                .filter(
+                  (item) =>
+                    selectedContext.role !== 'teacher' ||
+                    item.to !== routes.academies,
+                )
+                .map((item) => (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) =>
+                        `block rounded-md px-4 py-2.5 ${
+                          isActive
+                            ? 'bg-primary font-medium text-primary-foreground'
+                            : 'bg-accent hover:bg-accent/80'
+                        }`
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  </li>
+                ))}
+            </ul>
+          </nav>
+        )}
         <div className="mt-8 flex flex-wrap gap-2 text-sm lg:mt-auto lg:flex-col">
+          {selectedContext && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSelectedContext(null)
+                navigate(routes.management, { replace: true })
+              }}
+            >
+              Trocar contexto
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"

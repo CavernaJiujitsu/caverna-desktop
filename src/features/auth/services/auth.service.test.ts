@@ -60,6 +60,25 @@ describe('authService', () => {
     ).rejects.toBeInstanceOf(AppError)
   })
 
+  it('accepts an authorized account without a practitioner profile', async () => {
+    mockedPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          accessToken: 'teacher-token',
+          tokenType: 'Bearer',
+          expiresIn: 7200,
+          userId,
+        },
+      },
+    })
+    const response = await authService.login(
+      'professor@exemplo.com',
+      'senha123',
+    )
+    expect(response.userId).toBe(userId)
+    expect(response).not.toHaveProperty('practitionerId')
+  })
+
   it('maps rate limiting to a dedicated error kind', async () => {
     mockedPost.mockRejectedValueOnce(
       new AxiosError(

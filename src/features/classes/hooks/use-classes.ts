@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSession } from '@/shared/session/session'
 import {
   classService,
   type ClassFilters,
@@ -17,9 +18,14 @@ export const classKeys = {
 }
 
 export function useClasses(filters: ClassFilters) {
+  const { selectedContext } = useSession()
+  const scopedFilters =
+    selectedContext?.role === 'teacher'
+      ? { ...filters, unitId: selectedContext.caveUnitId ?? '' }
+      : filters
   return useQuery({
-    queryKey: classKeys.list(filters),
-    queryFn: ({ signal }) => classService.list(filters, signal),
+    queryKey: [...classKeys.list(scopedFilters), selectedContext?.id],
+    queryFn: ({ signal }) => classService.list(scopedFilters, signal),
     staleTime: 60_000,
   })
 }

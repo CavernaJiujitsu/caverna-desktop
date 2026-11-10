@@ -1,7 +1,10 @@
 import axios, { AxiosError } from 'axios'
 import { env } from '@/shared/lib/env'
 import { AppError } from '@/shared/types/app-error'
-import { getAccessToken } from '@/shared/session/access-token'
+import {
+  getAccessToken,
+  getManagementContextId,
+} from '@/shared/session/access-token'
 
 const API_PREFIX = '/api/v1'
 
@@ -9,7 +12,7 @@ export const http = axios.create({
   baseURL: env.VITE_API_BASE_URL,
   timeout: env.VITE_API_TIMEOUT_MS,
   headers: { Accept: 'application/json' },
-  // Credentials and CSRF will be configured after the API auth contract is agreed.
+  // The API uses bearer tokens, not ambient cookies.
   withCredentials: false,
 })
 
@@ -18,7 +21,18 @@ http.interceptors.request.use((config) => {
     config.url = `${API_PREFIX}${config.url}`
   }
   const accessToken = getAccessToken()
-  if (accessToken) config.headers.set('Authorization', `Bearer ${accessToken}`)
+  const contextId = getManagementContextId()
+  const path = config.url?.split('?')[0]
+  const publicLogin = path === `${API_PREFIX}/auth/login`
+  if (accessToken && !publicLogin)
+    config.headers.set('Authorization', `Bearer ${accessToken}`)
+  else config.headers.delete('Authorization')
+  const contextControl =
+    path === `${API_PREFIX}/management/contexts` ||
+    path === `${API_PREFIX}/management/contexts/switch`
+  if (contextId && !publicLogin && !contextControl)
+    config.headers.set('X-Management-Context', contextId)
+  else config.headers.delete('X-Management-Context')
   return config
 })
 

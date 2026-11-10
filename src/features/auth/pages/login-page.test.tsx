@@ -9,7 +9,12 @@ import {
 import { SessionProvider } from '@/shared/session/session-context'
 import LoginPage from '@/features/auth/pages/login-page'
 import { http } from '@/shared/lib/axios'
-import { getAccessToken, setAccessToken } from '@/shared/session/access-token'
+import {
+  getAccessToken,
+  getManagementContextId,
+  setAccessToken,
+  setManagementContextId,
+} from '@/shared/session/access-token'
 
 vi.mock('@/shared/lib/axios', () => ({ http: { post: vi.fn(), get: vi.fn() } }))
 
@@ -33,7 +38,7 @@ const routes = (
   </Routes>
 )
 
-function loginResponse() {
+function loginResponse(withPractitioner = true) {
   return {
     data: {
       message: 'Login realizado com sucesso',
@@ -42,7 +47,7 @@ function loginResponse() {
         tokenType: 'Bearer',
         expiresIn: 7200,
         userId,
-        practitionerId,
+        ...(withPractitioner ? { practitionerId } : {}),
       },
       timestamp: '2026-11-07T12:00:00.000Z',
     },
@@ -67,10 +72,11 @@ describe('LoginPage', () => {
 
   afterEach(() => {
     setAccessToken(null)
+    setManagementContextId(null)
     vi.restoreAllMocks()
   })
 
-  it('signs in and opens the real academies route', async () => {
+  it('signs in and requires context selection before opening management data', async () => {
     mockedPost.mockResolvedValueOnce(loginResponse())
     mockedGet.mockResolvedValueOnce({
       data: {
@@ -98,26 +104,26 @@ describe('LoginPage', () => {
     })
 
     await vi.waitFor(() => {
-      expect(mockedGet).toHaveBeenCalledWith('/api/v1/management/contexts')
-    })
-    await vi.waitFor(() => {
-      expect(screen.getByText('Academies route')).toBeInTheDocument()
+      expect(screen.getByText('Management route')).toBeInTheDocument()
     })
     expect(getAccessToken()).toBe('token-abc')
+    expect(getManagementContextId()).toBeNull()
+    expect(mockedGet).not.toHaveBeenCalled()
+    expect(screen.queryByText('Academies route')).not.toBeInTheDocument()
     expect(screen.queryByText(/prévia dos contextos/i)).not.toBeInTheDocument()
   })
 
-  it('keeps the app usable with a local fallback when contexts are unavailable', async () => {
-    mockedPost.mockResolvedValueOnce(loginResponse())
-    mockedGet.mockRejectedValueOnce(new Error('Not Found'))
+  it('accepts management login without creating or requiring a practitioner', async () => {
+    mockedPost.mockResolvedValueOnce(loginResponse(false))
 
     render(routes, { wrapper })
     fillCredentials()
 
     await vi.waitFor(() => {
-      expect(screen.getByText('Academies route')).toBeInTheDocument()
+      expect(screen.getByText('Management route')).toBeInTheDocument()
     })
     expect(getAccessToken()).toBe('token-abc')
+    expect(getManagementContextId()).toBeNull()
   })
 
   it('shows a safe credential error when login fails with 401', async () => {

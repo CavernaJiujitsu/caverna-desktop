@@ -1,58 +1,51 @@
 import { z } from 'zod'
 import { http, normalizeHttpError } from '@/shared/lib/axios'
+import { AppError } from '@/shared/types/app-error'
 import type { ManagementContext } from '@/shared/types/management-context'
 
-// CONTRACT PENDING #98: the backend does not expose management contexts yet.
-// Callers must treat failures as recoverable and use the local fallback below.
 const ENDPOINTS = {
   list: '/api/v1/management/contexts',
   switch: '/api/v1/management/contexts/switch',
 } as const
 
-const contextSchema = z.object({
-  id: z.string(),
-  role: z.enum(['platform', 'academy', 'teacher']),
-  label: z.string(),
-  detail: z.string().optional(),
-})
-
-const contextListResponseSchema = z.object({
-  message: z.string().optional(),
-  data: z.array(contextSchema),
-  timestamp: z.string().optional(),
-})
+const base = { id: z.string().uuid(), label: z.string(), detail: z.string() }
+const contextSchema = z.discriminatedUnion('role', [
+  z.object({ ...base, role: z.literal('platform') }),
+  z.object({ ...base, role: z.literal('academy'), caveId: z.string().uuid() }),
+  z.object({
+    ...base,
+    role: z.literal('teacher'),
+    caveId: z.string().uuid(),
+    caveUnitId: z.string().uuid(),
+    teacherId: z.string().uuid(),
+  }),
+])
+const contextListResponseSchema = z.object({ data: z.array(contextSchema) })
+const contextResponseSchema = z.object({ data: contextSchema })
 
 export const managementContextService = {
-  async list(): Promise<ManagementContext[]> {
+  async list(signal?: AbortSignal): Promise<ManagementContext[]> {
     try {
-      const { data } = await http.get<unknown>(ENDPOINTS.list)
-      return contextListResponseSchema.parse(data).data.map((context) => ({
-        id: context.id,
-        role: context.role,
-        label: context.label,
-        detail: context.detail ?? '',
-      }))
+      const { data } = await http.get<unknown>(ENDPOINTS.list, { signal })
+      return contextListResponseSchema.parse(data).data
     } catch (error) {
       throw normalizeHttpError(error)
     }
   },
 
-  async switch(contextId: string): Promise<void> {
+  async switch(contextId: string): Promise<ManagementContext> {
     try {
-      await http.post(ENDPOINTS.switch, { contextId })
+      const { data } = await http.post<unknown>(ENDPOINTS.switch, { contextId })
+      const context = contextResponseSchema.parse(data).data
+      if (context.id !== contextId)
+        throw new AppError(
+          'forbidden',
+          'Não foi possível validar o contexto selecionado.',
+          403,
+        )
+      return context
     } catch (error) {
       throw normalizeHttpError(error)
     }
   },
-}
-
-// Temporary local context so authenticated management screens remain usable
-// until #98 exposes authorized contexts. It grants no backend permission.
-export function buildLocalFallbackContext(userId: string): ManagementContext {
-  return {
-    id: `local:${userId}`,
-    role: 'academy',
-    label: 'Gestão da academia',
-    detail: 'Contexto local até a API de contextos ser disponibilizada.',
-  }
 }

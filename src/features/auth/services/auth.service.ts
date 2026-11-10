@@ -6,7 +6,7 @@ import {
 } from '@/features/auth/schemas/auth.schema'
 import { isAxiosError } from 'axios'
 
-// POST /api/v1/auth/login is the confirmed practitioner login contract.
+// Shared login supports accounts with or without a practitioner profile.
 const ENDPOINTS = {
   login: '/api/v1/auth/login',
 } as const

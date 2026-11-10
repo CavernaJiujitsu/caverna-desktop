@@ -44,6 +44,11 @@ const linkedPractitionersResponse = z.object({
 })
 
 export const academyService = {
+  async findOne(id: string, signal?: AbortSignal): Promise<Academy> {
+    const response = await http.get(`/caves/${id}`, { signal })
+    const cave = itemResponse.parse(response.data).data
+    return academySchema.parse({ ...cave, units: cave.units ?? [] })
+  },
   async list(signal?: AbortSignal): Promise<Academy[]> {
     const response = await http.get('/caves', {
       params: { page: 1, limit: 100 },

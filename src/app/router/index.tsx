@@ -67,7 +67,11 @@ export const router = createBrowserRouter([
   },
   {
     path: routes.academies,
-    element: <ProtectedRoute>{wrap(<AcademiesPage />)}</ProtectedRoute>,
+    element: (
+      <ProtectedRoute allowedRoles={['platform', 'academy']}>
+        {wrap(<AcademiesPage />)}
+      </ProtectedRoute>
+    ),
     errorElement: <ErrorPage />,
   },
   {
