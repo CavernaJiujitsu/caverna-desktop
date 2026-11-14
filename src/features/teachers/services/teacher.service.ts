@@ -1,74 +1,117 @@
-import { z } from 'zod'
-import { http } from '@/shared/lib/axios'
-import { AppError } from '@/shared/types/app-error'
+import { envelopeSchema, paginatedSchema } from '@/shared/lib/api-schema'
+import { http, normalizeHttpError } from '@/shared/lib/axios'
+import {
+  teacherSchema,
+  type Teacher,
+  type TeacherCreateInput,
+  type TeacherUpdateInput,
+} from '@/features/teachers/schemas/teacher.schema'
 
-const teacherSchema = z.object({ id: z.string().uuid(), name: z.string() })
-export type TeacherOption = z.infer<typeof teacherSchema>
+const ENDPOINTS = {
+  list: '/teachers',
+  item: (teacherId: string) => `/teachers/${teacherId}`,
+  membership: '/memberships/teachers/cave-units',
+  membershipItem: (teacherId: string, caveUnitId: string) =>
+    `/memberships/teachers/cave-units/${teacherId}/${caveUnitId}`,
+} as const
 
-const teacherItemSchema = z.object({ data: teacherSchema })
-const teachersResponseSchema = z.object({ data: z.array(teacherSchema) })
+const teacherSchemaEnvelope = envelopeSchema(teacherSchema)
+const teacherListSchema = envelopeSchema(paginatedSchema(teacherSchema))
 
-export type TeacherInput = {
-  name: string
-  email: string
+export type TeacherListQuery = {
+  page: number
+  limit: number
+  search?: string
+  caveId?: string
 }
 
-export type TeacherUpdateInput = {
-  name?: string
-  email?: string
+export type TeacherPage = {
+  items: Teacher[]
+  page: number
+  totalPage: number
+  total: number
 }
 
-export async function listTeachers(
-  signal?: AbortSignal,
-): Promise<TeacherOption[]> {
-  const response = await http.get('/teachers', { signal })
-  return teachersResponseSchema.parse(response.data).data
-}
+export const teacherService = {
+  async list(
+    query: TeacherListQuery,
+    signal?: AbortSignal,
+  ): Promise<TeacherPage> {
+    try {
+      const { data } = await http.get<unknown>(ENDPOINTS.list, {
+        params: {
+          page: query.page,
+          limit: query.limit,
+          ...(query.search ? { search: query.search } : {}),
+          ...(query.caveId ? { caveId: query.caveId } : {}),
+        },
+        signal,
+      })
+      const parsed = teacherListSchema.parse(data).data
+      return {
+        items: parsed.data,
+        page: parsed._meta.page,
+        totalPage: parsed._meta.totalPage,
+        total: parsed._meta.total,
+      }
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
 
-export async function findTeacher(
-  id: string,
-  signal?: AbortSignal,
-): Promise<TeacherOption> {
-  try {
-    const response = await http.get(`/teachers/${id}`, { signal })
-    return teacherItemSchema.parse(response.data).data
-  } catch {
-    throw new AppError('not-found', 'Professor não encontrado.')
-  }
-}
+  async findOne(teacherId: string, signal?: AbortSignal): Promise<Teacher> {
+    try {
+      const { data } = await http.get<unknown>(ENDPOINTS.item(teacherId), {
+        signal,
+      })
+      return teacherSchemaEnvelope.parse(data).data
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
 
-export async function createTeacher(
-  input: TeacherInput,
-  signal?: AbortSignal,
-): Promise<TeacherOption> {
-  try {
-    const response = await http.post('/teachers', input, { signal })
-    return teacherItemSchema.parse(response.data).data
-  } catch {
-    throw new AppError('unknown', 'Falha ao criar professor.')
-  }
-}
+  async create(input: TeacherCreateInput): Promise<Teacher> {
+    try {
+      const { data } = await http.post<unknown>(ENDPOINTS.list, input)
+      return teacherSchemaEnvelope.parse(data).data
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
 
-export async function updateTeacher(
-  id: string,
-  input: TeacherUpdateInput,
-  signal?: AbortSignal,
-): Promise<TeacherOption> {
-  try {
-    const response = await http.patch(`/teachers/${id}`, input, { signal })
-    return teacherItemSchema.parse(response.data).data
-  } catch {
-    throw new AppError('unknown', 'Falha ao atualizar professor.')
-  }
-}
+  async update(teacherId: string, input: TeacherUpdateInput): Promise<Teacher> {
+    try {
+      const { data } = await http.patch<unknown>(
+        ENDPOINTS.item(teacherId),
+        input,
+      )
+      return teacherSchemaEnvelope.parse(data).data
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
 
-export async function removeTeacher(
-  id: string,
-  signal?: AbortSignal,
-): Promise<void> {
-  try {
-    await http.delete(`/teachers/${id}`, { signal })
-  } catch {
-    throw new AppError('unknown', 'Falha ao remover professor.')
-  }
+  async remove(teacherId: string): Promise<void> {
+    try {
+      await http.delete(ENDPOINTS.item(teacherId))
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
+
+  async linkUnit(teacherId: string, caveUnitId: string): Promise<void> {
+    try {
+      await http.post(ENDPOINTS.membership, { teacherId, caveUnitId })
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
+
+  async unlinkUnit(teacherId: string, caveUnitId: string): Promise<void> {
+    try {
+      await http.delete(ENDPOINTS.membershipItem(teacherId, caveUnitId))
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
 }

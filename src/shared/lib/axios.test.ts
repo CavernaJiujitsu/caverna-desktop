@@ -39,4 +39,38 @@ describe('HTTP boundary', () => {
     expect(normalized.kind).toBe('server')
     expect(normalized.message).not.toContain('internal')
   })
+
+  it('uses the contracted error message, except for forbidden access', () => {
+    const validation = new AxiosError(
+      'invalid request',
+      'ERR_BAD_REQUEST',
+      { headers: new AxiosHeaders() },
+      undefined,
+      {
+        data: { message: 'O e-mail já está em uso.' },
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      },
+    )
+    const forbidden = new AxiosError(
+      'forbidden',
+      'ERR_BAD_REQUEST',
+      { headers: new AxiosHeaders() },
+      undefined,
+      {
+        data: { message: 'internal authorization detail' },
+        status: 403,
+        statusText: 'Forbidden',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      },
+    )
+
+    expect(normalizeHttpError(validation).message).toBe(
+      'O e-mail já está em uso.',
+    )
+    expect(normalizeHttpError(forbidden).message).toBe('Sem permissão.')
+  })
 })

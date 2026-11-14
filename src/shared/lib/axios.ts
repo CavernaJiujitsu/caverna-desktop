@@ -1,9 +1,11 @@
 import axios, { AxiosError } from 'axios'
+import { z } from 'zod'
 import { env } from '@/shared/lib/env'
 import { AppError } from '@/shared/types/app-error'
 import { getAccessToken } from '@/shared/session/access-token'
 
 const API_PREFIX = '/api/v1'
+const errorEnvelopeSchema = z.object({ message: z.string().trim().min(1) })
 
 export const http = axios.create({
   baseURL: env.VITE_API_BASE_URL,
@@ -38,41 +40,46 @@ export function normalizeHttpError(error: unknown): AppError {
     )
 
   const status = axiosError.response.status
+  const responseMessage = errorEnvelopeSchema.safeParse(
+    axiosError.response.data,
+  )
+  const message = responseMessage.success
+    ? responseMessage.data.message
+    : undefined
   if (status === 400 || status === 422)
     return new AppError(
       'validation',
-      'Please review the submitted information.',
+      message ?? 'Please review the submitted information.',
       status,
     )
   if (status === 401)
-    return new AppError('unauthorized', 'Please sign in to continue.', status)
-  if (status === 403)
     return new AppError(
-      'forbidden',
-      'You do not have access to this resource.',
+      'unauthorized',
+      message ?? 'Please sign in to continue.',
       status,
     )
+  if (status === 403) return new AppError('forbidden', 'Sem permissão.', status)
   if (status === 429)
     return new AppError(
       'rate-limited',
-      'Too many requests. Please try again later.',
+      message ?? 'Too many requests. Please try again later.',
       status,
     )
   if (status === 404)
     return new AppError(
       'not-found',
-      'The requested resource was not found.',
+      message ?? 'The requested resource was not found.',
       status,
     )
   if (status >= 500)
     return new AppError(
       'server',
-      'The service is unavailable. Please try again later.',
+      message ?? 'The service is unavailable. Please try again later.',
       status,
     )
   return new AppError(
     'unknown',
-    'Something went wrong. Please try again.',
+    message ?? 'Something went wrong. Please try again.',
     status,
   )
 }

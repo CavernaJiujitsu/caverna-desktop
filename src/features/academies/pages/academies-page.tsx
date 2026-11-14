@@ -1,6 +1,6 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AcademyForm } from '@/features/academies/components/academy-form'
-import { UnitForm } from '@/features/academies/components/unit-form'
 import {
   useAcademies,
   useAcademyMutations,
@@ -10,37 +10,37 @@ import { EmptyState } from '@/shared/components/feedback/empty-state'
 import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { PageHeader } from '@/shared/components/layout/page-header'
+import { Button } from '@/shared/components/ui/button'
+import { routes } from '@/app/router/routes'
 
 export default function AcademiesPage() {
   const academies = useAcademies()
   const mutations = useAcademyMutations()
   const [editingAcademy, setEditingAcademy] = useState<string | null>(null)
-  const [addingUnitTo, setAddingUnitTo] = useState<string | null>(null)
-  const [editingUnit, setEditingUnit] = useState<string | null>(null)
 
   return (
     <ManagementShell>
       <PageHeader
-        title="Academies"
+        title="Cavernas"
         description="Cadastre e consulte cavernas pela API do Caverna."
       />
       <div className="grid gap-8 md:grid-cols-[1fr_1.5fr]">
         <section className="rounded-lg border p-6">
-          <h2 className="mb-4 text-lg font-medium">Add an academy</h2>
+          <h2 className="mb-4 text-lg font-medium">Cadastrar caverna</h2>
           <AcademyForm />
         </section>
-        <section aria-label="Academy list">
+        <section aria-label="Lista de cavernas">
           {academies.isPending ? (
-            <LoadingState label="Loading academies" />
+            <LoadingState label="Carregando cavernas" />
           ) : academies.isError ? (
             <ErrorState
-              message="Could not load academies."
+              message="Não foi possível carregar as cavernas."
               onRetry={() => void academies.refetch()}
             />
           ) : academies.data.length === 0 ? (
             <EmptyState
-              title="No academies yet"
-              description="Add one using the form."
+              title="Nenhuma caverna cadastrada"
+              description="Cadastre uma caverna usando o formulário."
             />
           ) : (
             <ul className="space-y-3">
@@ -52,98 +52,48 @@ export default function AcademiesPage() {
                       onDone={() => setEditingAcademy(null)}
                     />
                   ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <strong>{academy.name}</strong>
-                      <div className="flex gap-2">
-                        <button
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <strong>{academy.name}</strong>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {academy.units.length} unidade(s)
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
                           type="button"
-                          className="text-sm underline"
+                          size="sm"
+                          variant="outline"
                           onClick={() => setEditingAcademy(academy.id)}
                         >
-                          Edit
-                        </button>
-                        <button
+                          Editar caverna
+                        </Button>
+                        <Button asChild size="sm" variant="secondary">
+                          <Link
+                            to={`${routes.units}?caveId=${encodeURIComponent(academy.id)}`}
+                          >
+                            Gerenciar unidades
+                          </Link>
+                        </Button>
+                        <Button
                           type="button"
-                          className="text-sm text-destructive underline"
+                          size="sm"
+                          variant="destructive"
                           disabled={mutations.remove.isPending}
                           onClick={() => {
-                            if (window.confirm('Remove this academy?'))
+                            if (
+                              window.confirm(
+                                'Remover esta caverna? Esta ação não pode ser desfeita.',
+                              )
+                            )
                               mutations.remove.mutate(academy.id)
                           }}
                         >
-                          Remove
-                        </button>
+                          Remover caverna
+                        </Button>
                       </div>
                     </div>
                   )}
-                  <div className="mt-4 space-y-2">
-                    <h3 className="text-sm font-medium">Units</h3>
-                    {academy.units.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No units registered.
-                      </p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {academy.units.map((unit) => (
-                          <li
-                            className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-sm"
-                            key={unit.id}
-                          >
-                            <span>
-                              {unit.name}
-                              {unit.neighborhood
-                                ? ` · ${unit.neighborhood}`
-                                : ''}
-                            </span>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                className="underline"
-                                onClick={() => setEditingUnit(unit.id)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="text-destructive underline"
-                                disabled={mutations.removeUnit.isPending}
-                                onClick={() => {
-                                  if (window.confirm('Remove this unit?'))
-                                    mutations.removeUnit.mutate({
-                                      caveId: academy.id,
-                                      unitId: unit.id,
-                                    })
-                                }}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                            {editingUnit === unit.id ? (
-                              <UnitForm
-                                caveId={academy.id}
-                                unit={unit}
-                                onDone={() => setEditingUnit(null)}
-                              />
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {addingUnitTo === academy.id ? (
-                      <UnitForm
-                        caveId={academy.id}
-                        onDone={() => setAddingUnitTo(null)}
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className="text-sm underline"
-                        onClick={() => setAddingUnitTo(academy.id)}
-                      >
-                        Add unit
-                      </button>
-                    )}
-                  </div>
                 </li>
               ))}
             </ul>

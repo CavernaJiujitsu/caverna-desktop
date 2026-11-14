@@ -28,7 +28,7 @@ it('renders an actionable load error state', () => {
     </MemoryRouter>,
   )
   expect(screen.getByRole('alert')).toHaveTextContent(
-    'Could not load academies',
+    'Não foi possível carregar as cavernas.',
   )
   expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
 })
