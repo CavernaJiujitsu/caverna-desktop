@@ -3,15 +3,15 @@ import { LoaderCircle, Trash2, Users } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useState } from 'react'
 import { ManagementShell } from '@/features/management/components/management-shell'
+import { useAllManagedCaveUnits } from '@/features/academies/hooks/use-academies'
+import { usePlatformCaves } from '@/features/platform/hooks/use-platform-caves'
 import {
   useStudentMembershipMutations,
   useStudentMemberships,
 } from '@/features/memberships/hooks/use-memberships'
 import {
   studentLinkFormSchema,
-  unitIdFormSchema,
   type StudentLinkFormValues,
-  type UnitIdFormValues,
 } from '@/features/memberships/schemas/membership.schema'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
 import { ErrorState } from '@/shared/components/feedback/error-state'
@@ -20,50 +20,19 @@ import { PageHeader } from '@/shared/components/layout/page-header'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { notify } from '@/shared/lib/notifications'
+import { useSession } from '@/shared/session/session'
+import type { ManagementContext } from '@/shared/types/management-context'
 import { AppError } from '@/shared/types/app-error'
 
 function messageForError(error: unknown, fallback: string) {
   return error instanceof AppError ? error.message : fallback
 }
 
-function UnitSelector({
-  onSelect,
-}: {
-  onSelect: (caveUnitId: string) => void
-}) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<UnitIdFormValues>({
-    resolver: zodResolver(unitIdFormSchema),
-    defaultValues: { caveUnitId: '' },
-  })
-  return (
-    <form
-      className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4"
-      onSubmit={(event) =>
-        void handleSubmit((values) => onSelect(values.caveUnitId))(event)
-      }
-      noValidate
-    >
-      <label className="grid flex-1 gap-2 text-sm font-medium">
-        UUID da unidade
-        <Input
-          placeholder="00000000-0000-0000-0000-000000000000"
-          aria-invalid={Boolean(errors.caveUnitId)}
-          {...register('caveUnitId')}
-        />
-        {errors.caveUnitId && (
-          <span className="text-destructive">{errors.caveUnitId.message}</span>
-        )}
-      </label>
-      <Button type="submit">Consultar alunos</Button>
-      <p className="basis-full text-sm text-muted-foreground">
-        A API confirma se a unidade pertence à caverna do contexto atual.
-      </p>
-    </form>
-  )
+function caveIdFromContext(context: ManagementContext | null) {
+  if (context?.role !== 'academy') return ''
+  if (context.caveId) return context.caveId
+  const [scope, caveId] = context.id.split(':')
+  return scope === 'academy' ? (caveId ?? '') : ''
 }
 
 function StudentLinkForm({ caveUnitId }: { caveUnitId: string }) {
@@ -185,30 +154,137 @@ function StudentList({ caveUnitId }: { caveUnitId: string }) {
 }
 
 export default function MembershipsPage() {
-  const [caveUnitId, setCaveUnitId] = useState('')
+  const { selectedContext } = useSession()
+  const isPlatformContext = selectedContext?.role === 'platform'
+  const caves = usePlatformCaves({ enabled: isPlatformContext })
+  const [selectedCaveId, setSelectedCaveId] = useState('')
+  const [selectedUnitId, setSelectedUnitId] = useState('')
+
+  const caveId = isPlatformContext
+    ? caves.isSuccess
+      ? (caves.data.find((cave) => cave.id === selectedCaveId)?.id ??
+        caves.data[0]?.id ??
+        '')
+      : ''
+    : caveIdFromContext(selectedContext)
+  const units = useAllManagedCaveUnits(caveId)
+  const activeUnits = units.data?.filter((unit) => unit.active) ?? []
+  const selectedUnit = activeUnits.find((unit) => unit.id === selectedUnitId)
+  const selectedUnitStillAvailable = Boolean(selectedUnit)
+
+  function changeCave(nextCaveId: string) {
+    setSelectedCaveId(nextCaveId)
+    setSelectedUnitId('')
+  }
+
   return (
     <ManagementShell>
       <PageHeader
         title="Matrículas de alunos"
-        description="Consulte e gerencie alunos de uma unidade."
+        description="Selecione uma unidade para consultar e gerenciar seus alunos."
       />
-      <UnitSelector onSelect={setCaveUnitId} />
-      {!caveUnitId ? (
-        <EmptyState
-          title="Informe uma unidade"
-          description="Use o UUID da unidade para listar seus alunos."
-        />
-      ) : (
-        <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <div>
-            <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="size-4" aria-hidden="true" />
-              <span className="break-all">Unidade {caveUnitId}</span>
+
+      {isPlatformContext ? (
+        caves.isPending ? (
+          <LoadingState label="Carregando cavernas…" />
+        ) : caves.isError ? (
+          <ErrorState
+            message={messageForError(
+              caves.error,
+              'Não foi possível carregar as cavernas disponíveis.',
+            )}
+            onRetry={() => void caves.refetch()}
+          />
+        ) : caves.data.length === 0 ? (
+          <EmptyState
+            title="Nenhuma caverna disponível"
+            description="Não há cavernas para consultar matrículas neste contexto."
+          />
+        ) : (
+          <label className="mb-4 grid max-w-xl gap-2 text-sm font-medium">
+            Caverna
+            <select
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              value={caveId}
+              onChange={(event) => changeCave(event.target.value)}
+            >
+              {caves.data.map((cave) => (
+                <option key={cave.id} value={cave.id}>
+                  {cave.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )
+      ) : selectedContext?.role === 'academy' && !caveId ? (
+        <ErrorState message="O contexto confirmado não informa uma caverna válida." />
+      ) : null}
+
+      {caveId && (
+        <>
+          <section className="rounded-xl border border-border bg-card p-4">
+            {units.isPending ? (
+              <LoadingState label="Carregando unidades…" />
+            ) : units.isError ? (
+              <ErrorState
+                message={messageForError(
+                  units.error,
+                  'Não foi possível carregar as unidades.',
+                )}
+                onRetry={() => void units.refetch()}
+              />
+            ) : activeUnits.length === 0 ? (
+              <EmptyState
+                title="Nenhuma unidade ativa"
+                description="Cadastre ou reative uma unidade para gerenciar matrículas."
+              />
+            ) : (
+              <label className="grid max-w-xl gap-2 text-sm font-medium">
+                Unidade
+                <select
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={selectedUnitStillAvailable ? selectedUnitId : ''}
+                  onChange={(event) => setSelectedUnitId(event.target.value)}
+                >
+                  <option value="">Selecione uma unidade</option>
+                  {activeUnits.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
+                      {unit.neighborhood ? ` · ${unit.neighborhood}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </section>
+
+          {units.isSuccess && activeUnits.length > 0 && !selectedUnit ? (
+            <div className="mt-4">
+              <EmptyState
+                title="Selecione uma unidade"
+                description="Escolha uma unidade na lista para ver as matrículas."
+              />
             </div>
-            <StudentList caveUnitId={caveUnitId} />
-          </div>
-          <StudentLinkForm caveUnitId={caveUnitId} />
-        </section>
+          ) : null}
+
+          {selectedUnit && (
+            <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+              <div>
+                <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="size-4" aria-hidden="true" />
+                  <span>
+                    {selectedUnit.name}
+                    {selectedUnit.neighborhood
+                      ? ` · ${selectedUnit.neighborhood}`
+                      : ''}
+                  </span>
+                </div>
+                <StudentList caveUnitId={selectedUnit.id} />
+              </div>
+              <StudentLinkForm caveUnitId={selectedUnit.id} />
+            </section>
+          )}
+        </>
       )}
     </ManagementShell>
   )

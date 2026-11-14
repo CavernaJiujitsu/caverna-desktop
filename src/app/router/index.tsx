@@ -10,6 +10,7 @@ import { ErrorPage } from '@/shared/components/feedback/error-page'
 const AcademiesPage = lazy(
   () => import('@/features/academies/pages/academies-page'),
 )
+const UnitsPage = lazy(() => import('@/features/academies/pages/units-page'))
 const LoginPage = lazy(() => import('@/features/auth/pages/login-page'))
 const PasswordRecoveryRequestPage = lazy(
   () => import('@/features/auth/pages/password-recovery-request-page'),
@@ -194,7 +195,20 @@ export const router = createBrowserRouter([
   },
   {
     path: routes.academies,
-    element: <ProtectedRoute>{wrap(<AcademiesPage />)}</ProtectedRoute>,
+    element: (
+      <ProtectedRoute allowedContextRoles={['platform']}>
+        {wrap(<AcademiesPage />)}
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: routes.units,
+    element: (
+      <ProtectedRoute allowedContextRoles={[...academyManagementRoles]}>
+        {wrap(<UnitsPage />)}
+      </ProtectedRoute>
+    ),
     errorElement: <ErrorPage />,
   },
   {

@@ -17,12 +17,14 @@ const legacyNavigation: NavigationItem[] = [
 const navigationByRole: Record<ManagementRole, NavigationItem[]> = {
   platform: [
     { to: routes.platformCaves, label: 'Cavernas' },
+    { to: routes.units, label: 'Unidades' },
     { to: routes.caveAdministrators, label: 'Administradores' },
     { to: routes.teachers, label: 'Professores' },
     { to: routes.platformUsers, label: 'Usuários' },
     { to: routes.workouts, label: 'Treinos (piloto)' },
   ],
   academy: [
+    { to: routes.units, label: 'Unidades' },
     { to: routes.caveAdministrators, label: 'Administradores' },
     { to: routes.schedules, label: 'Horários' },
     { to: routes.teachers, label: 'Professores' },

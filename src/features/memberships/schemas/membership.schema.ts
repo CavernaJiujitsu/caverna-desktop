@@ -23,8 +23,6 @@ export const studentMembershipSchema = z
   .passthrough()
 
 export const studentLinkFormSchema = z.object({ practitionerId: uuid })
-export const unitIdFormSchema = z.object({ caveUnitId: uuid })
 
 export type StudentMembership = z.infer<typeof studentMembershipSchema>
 export type StudentLinkFormValues = z.infer<typeof studentLinkFormSchema>
-export type UnitIdFormValues = z.infer<typeof unitIdFormSchema>

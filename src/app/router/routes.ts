@@ -4,6 +4,7 @@ export const routes = {
   passwordRecovery: '/password-recovery',
   passwordRecoveryReset: '/password-recovery/reset',
   academies: '/academies',
+  units: '/units',
   classes: '/classes',
   schedules: '/schedules',
   evaluations: '/evaluations',

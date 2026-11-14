@@ -133,6 +133,35 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Forbidden content')).not.toBeInTheDocument()
   })
 
+  it('allows unit management only in platform or academy contexts', async () => {
+    renderAt(
+      '/units',
+      <>
+        <Route
+          path="/units"
+          element={
+            <WithSession
+              context={{
+                id: 'teacher:teacher-1',
+                role: 'teacher',
+                label: 'Professor',
+                detail: '',
+              }}
+            >
+              <ProtectedRoute allowedContextRoles={['platform', 'academy']}>
+                <p>Units content</p>
+              </ProtectedRoute>
+            </WithSession>
+          }
+        />
+        <Route path="/access-denied" element={<p>Access denied route</p>} />
+      </>,
+    )
+
+    expect(await screen.findByText('Access denied route')).toBeInTheDocument()
+    expect(screen.queryByText('Units content')).not.toBeInTheDocument()
+  })
+
   it('restores a persisted session and context on a protected route', () => {
     writeStoredSession({
       session: {
