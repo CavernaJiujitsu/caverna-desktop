@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
 import type { ManagementContext } from '@/shared/types/management-context'
 import {
   SessionContext,
@@ -6,37 +6,59 @@ import {
   type SessionContextValue,
 } from './session'
 import { setAccessToken } from './access-token'
+import {
+  clearStoredSession,
+  readStoredSession,
+  writeStoredSession,
+} from './session-storage'
+import { queryClient } from '@/shared/lib/query-client'
+
+const CONTEXT_QUERY_PREFIX = 'management-contexts'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [session, setSessionState] = useState<Session | null>(null)
-  const [contexts, setContextsState] = useState<ManagementContext[]>([])
+  const [restored] = useState(() => {
+    const stored = readStoredSession()
+    setAccessToken(stored?.session.accessToken ?? null)
+    return stored
+  })
+  const [session, setSessionState] = useState<Session | null>(
+    restored?.session ?? null,
+  )
   const [selectedContext, setSelectedContextState] =
-    useState<ManagementContext | null>(null)
+    useState<ManagementContext | null>(restored?.selectedContext ?? null)
+  const sessionRef = useRef<Session | null>(restored?.session ?? null)
 
-  const setSession = useCallback((s: Session | null) => {
-    setSessionState(s)
-    setAccessToken(s?.accessToken ?? null)
+  const setSession = useCallback((next: Session | null) => {
+    sessionRef.current = next
+    queryClient.clear()
+    setSelectedContextState(null)
+    setSessionState(next)
+    setAccessToken(next?.accessToken ?? null)
+    if (next) writeStoredSession({ session: next, selectedContext: null })
+    else clearStoredSession()
   }, [])
-  const setContexts = useCallback(
-    (c: ManagementContext[]) => setContextsState(c),
-    [],
-  )
-  const setSelectedContext = useCallback(
-    (c: ManagementContext | null) => setSelectedContextState(c),
-    [],
-  )
+
+  const setSelectedContext = useCallback((next: ManagementContext | null) => {
+    queryClient.removeQueries({
+      predicate: (query) => query.queryKey[0] !== CONTEXT_QUERY_PREFIX,
+    })
+    setSelectedContextState(next)
+    if (sessionRef.current) {
+      writeStoredSession({
+        session: sessionRef.current,
+        selectedContext: next,
+      })
+    }
+  }, [])
+
   const clearSession = useCallback(() => {
     setSession(null)
-    setContextsState([])
-    setSelectedContextState(null)
   }, [setSession])
 
   const value: SessionContextValue = {
     session,
-    contexts,
     selectedContext,
     setSession,
-    setContexts,
     setSelectedContext,
     clearSession,
   }

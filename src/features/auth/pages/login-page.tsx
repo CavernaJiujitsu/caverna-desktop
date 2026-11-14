@@ -1,46 +1,45 @@
 import { useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { LoginForm } from '@/features/auth/components/login-form'
 import { authService } from '@/features/auth/services/auth.service'
-import {
-  buildLocalFallbackContext,
-  managementContextService,
-} from '@/features/management/services/management-context.service'
 import { useSession } from '@/shared/session/session'
-import type { ManagementContext } from '@/shared/types/management-context'
 import { notify } from '@/shared/lib/notifications'
+import { AppError } from '@/shared/types/app-error'
+import { isDesktopRole } from '@/shared/types/user-role'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { setSession, setContexts, setSelectedContext, clearSession } =
-    useSession()
+  const { setSession, clearSession } = useSession()
 
   const handleLogin = useCallback(
     async (email: string, password: string) => {
       clearSession()
       const response = await authService.login(email, password)
+
+      if (!response.roles.some(isDesktopRole))
+        throw new AppError(
+          'forbidden',
+          'Esta conta não possui acesso à gestão desktop.',
+          403,
+        )
+
       setSession({
         user: { id: response.userId, email, name: null },
         accessToken: response.accessToken,
-        practitionerId: response.practitionerId,
+        expiresAt: Date.now() + response.expiresIn * 1000,
+        roles: response.roles,
+        ...(response.practitionerId
+          ? { practitionerId: response.practitionerId }
+          : {}),
+        ...(response.teacherId ? { teacherId: response.teacherId } : {}),
+        ...(response.caveId ? { caveId: response.caveId } : {}),
       })
 
-      const fallback = buildLocalFallbackContext(response.userId)
-      let contexts: ManagementContext[]
-      try {
-        contexts = await managementContextService.list()
-      } catch {
-        contexts = []
-      }
-      if (contexts.length === 0) contexts = [fallback]
-      setContexts(contexts)
-      setSelectedContext(contexts[0] ?? fallback)
-
       notify.success('Bem-vindo de volta.')
-      navigate(routes.academies, { replace: true })
+      navigate(routes.management, { replace: true })
     },
-    [clearSession, setSession, setContexts, setSelectedContext, navigate],
+    [clearSession, setSession, navigate],
   )
 
   return (
@@ -76,9 +75,15 @@ export default function LoginPage() {
           <LoginForm
             onSubmit={({ email, password }) => handleLogin(email, password)}
           />
-          <p className="mt-5 text-xs text-muted-foreground">
-            Sua academia ou perfil será selecionado após entrar.
-          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <p>Sua academia ou perfil será selecionado após entrar.</p>
+            <Link
+              className="font-medium text-primary underline-offset-4 hover:underline"
+              to={routes.passwordRecovery}
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
         </section>
       </div>
     </main>

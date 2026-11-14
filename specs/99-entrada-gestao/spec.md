@@ -17,6 +17,30 @@ Proposta sujeita ao contrato: `app` compõe rotas e layouts; a feature de autent
 - Tratar 401 de sessão expirada e 403 de acesso negado separadamente, sem expor dados sensíveis; suportar saída conforme contrato confirmado. A proteção de recursos e validação de contexto são responsabilidade do servidor em cada operação.
 - Interface responsiva, semântica e acessível por teclado, com rótulos, foco e mensagens de estado perceptíveis. Evitar segredos em logs e mensagens.
 
+## Revisão visual da seleção de contexto (2026-11-14)
+
+Problema observado: a tela `/management` era a única entrada de gestão fora da superfície escura usada no login e no painel. Além disso, cada cartão exibia o papel (`Administrar plataforma`, `Gerenciar academia`) em vez do `label` retornado pela API; com mais de um contexto, o nome da caverna ou do professor ficava oculto. Com um único contexto, o cartão também ocupava a largura inteira sem uma composição de página.
+
+Escopo desta revisão:
+
+- Aplicar a superfície escura, os destaques laranja/verde-água e a marca Caverna já usados no login e na gestão.
+- Compor a escolha em uma coluna central: cabeçalho da página, painel “Seus contextos”, contagem de acessos disponíveis e nota de troca posterior.
+- Usar `context.label` como título do cartão, o papel como categoria e `context.detail` como complemento, com ícone específico por papel.
+- Manter o cartão inteiro como botão, com foco visível, indicador “Acessar”, estado pendente “Validando…” e opções desabilitadas durante a confirmação.
+- Disponibilizar saída no cabeçalho da página, além da ação existente no estado vazio.
+- Preservar carregamento, erro recuperável, erro de troca, estado vazio e seleção por teclado.
+
+Fora do escopo: contratos da API, destinos por papel, regras de autorização e mudanças no backend. O contrato usado continua sendo `GET /api/v1/management/contexts`, cujo `label` identifica a caverna ou o professor, e `POST /api/v1/management/contexts/switch` para confirmar a escolha.
+
+Critérios de aceite:
+
+- [x] O nome do contexto retornado pela API aparece como informação principal; o papel aparece como categoria.
+- [x] A tela usa a mesma superfície escura e identidade visual do login/gestão em larguras pequenas e grandes.
+- [x] Os estados de carregamento, erro, vazio, pendente e sucesso continuam visíveis e operáveis por teclado.
+- [x] A saída da sessão está acessível na página e não interfere na escolha do contexto.
+
+Testes: cobrir os rótulos dos contextos e o estado pendente no teste do componente; manter os testes de página para seleção, erro de troca e estado vazio; executar lint, typecheck, testes e build.
+
 ## Contratos e decisões pendentes
 
 Não há endpoint, DTO, formato de perfil/contexto ou mecanismo de seleção confirmado nesta análise. Confirmar com #78 e #98: autenticação e verificação de sessão; resposta e identidade dos contextos; como enviá-los em cada operação; logout, expiração, renovação, revogação, 401/403; transporte de credenciais, armazenamento, CORS e CSRF quando aplicáveis. Não inventar endpoints ou regras de autorização. Confirmar rotas, capacidades por perfil, ausência/seleção única de contexto e tratamento de retorno à sessão. A revisão visual dos quadros Figma também permanece pendente nesta análise.

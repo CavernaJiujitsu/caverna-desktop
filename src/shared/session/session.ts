@@ -1,19 +1,23 @@
 import { createContext, useContext } from 'react'
 import type { ManagementContext } from '@/shared/types/management-context'
+import type { UserRole } from '@/shared/types/user-role'
 
 export type SessionUser = { id: string; email: string; name: string | null }
 export type Session = {
   user: SessionUser
   accessToken: string
-  practitionerId: string
+  /** Epoch milliseconds derived from the backend `expiresIn`. */
+  expiresAt: number
+  roles: UserRole[]
+  practitionerId?: string
+  teacherId?: string
+  caveId?: string
 }
 
 type SessionContextValue = {
   session: Session | null
-  contexts: ManagementContext[]
   selectedContext: ManagementContext | null
   setSession: (session: Session | null) => void
-  setContexts: (contexts: ManagementContext[]) => void
   setSelectedContext: (context: ManagementContext | null) => void
   clearSession: () => void
 }

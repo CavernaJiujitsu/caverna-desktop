@@ -5,4 +5,6 @@ export type ManagementContext = {
   role: ManagementRole
   label: string
   detail: string
+  /** Cave scope returned for an academy management context. */
+  caveId?: string
 }

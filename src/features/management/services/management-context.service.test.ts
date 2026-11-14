@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  buildLocalFallbackContext,
-  managementContextService,
-} from '@/features/management/services/management-context.service'
+import { managementContextService } from '@/features/management/services/management-context.service'
 import { http } from '@/shared/lib/axios'
 
 vi.mock('@/shared/lib/axios', () => ({
@@ -12,6 +9,13 @@ vi.mock('@/shared/lib/axios', () => ({
 
 const mockedGet = vi.mocked(http.get)
 const mockedPost = vi.mocked(http.post)
+
+const academyContext = {
+  id: 'academy:cave-1',
+  role: 'academy',
+  label: 'Academia A',
+  detail: 'Todas as unidades',
+}
 
 describe('managementContextService', () => {
   beforeEach(() => {
@@ -24,17 +28,12 @@ describe('managementContextService', () => {
       data: {
         message: 'OK',
         data: [
+          academyContext,
           {
-            id: 'ctx-1',
-            role: 'academy',
-            label: 'Academia A',
-            detail: 'todas as unidades',
-          },
-          {
-            id: 'ctx-2',
+            id: 'teacher:teacher-1',
             role: 'teacher',
             label: 'Professor B',
-            detail: 'unidade ilustrativa',
+            detail: 'Unidade Centro',
           },
         ],
         timestamp: '2026-11-07T12:00:00.000Z',
@@ -43,33 +42,35 @@ describe('managementContextService', () => {
 
     const contexts = await managementContextService.list()
 
-    expect(mockedGet).toHaveBeenCalledWith('/api/v1/management/contexts')
+    expect(mockedGet).toHaveBeenCalledWith('/management/contexts', {
+      signal: undefined,
+    })
     expect(contexts).toHaveLength(2)
-    expect(contexts[0]).toEqual({
-      id: 'ctx-1',
-      role: 'academy',
-      label: 'Academia A',
-      detail: 'todas as unidades',
+    expect(contexts[0]).toEqual(academyContext)
+  })
+
+  it('confirms the switch by posting the selected context id', async () => {
+    mockedPost.mockResolvedValueOnce({
+      data: { message: 'OK', data: academyContext },
+    })
+
+    await expect(
+      managementContextService.switch('academy:cave-1'),
+    ).resolves.toEqual(academyContext)
+    expect(mockedPost).toHaveBeenCalledWith('/management/contexts/switch', {
+      contextId: 'academy:cave-1',
     })
   })
 
-  it('switches context by posting the selected context id', async () => {
-    mockedPost.mockResolvedValueOnce({})
-    await managementContextService.switch('ctx-1')
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/management/contexts/switch',
-      {
-        contextId: 'ctx-1',
+  it('rejects a switch response for a different context', async () => {
+    mockedPost.mockResolvedValueOnce({
+      data: {
+        data: { ...academyContext, id: 'academy:other-cave' },
       },
-    )
-  })
-
-  it('builds a local fallback context for the authenticated user', () => {
-    expect(buildLocalFallbackContext('user-1')).toEqual({
-      id: 'local:user-1',
-      role: 'academy',
-      label: 'Gestão da academia',
-      detail: 'Contexto local até a API de contextos ser disponibilizada.',
     })
+
+    await expect(
+      managementContextService.switch('academy:cave-1'),
+    ).rejects.toMatchObject({ kind: 'forbidden' })
   })
 })

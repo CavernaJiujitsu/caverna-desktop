@@ -5,12 +5,24 @@ import type {
   AcademyInput,
 } from '@/features/academies/schemas/academy.schema'
 
-export const academyKeys = { all: ['academies'] as const }
+export const academyKeys = {
+  all: ['academies'] as const,
+  units: (caveId: string) => ['academies', caveId, 'units'] as const,
+}
 
 export function useAcademies() {
   return useQuery({
     queryKey: academyKeys.all,
     queryFn: ({ signal }) => academyService.list(signal),
+  })
+}
+
+export function useCaveUnits(caveId: string) {
+  return useQuery({
+    queryKey: academyKeys.units(caveId),
+    queryFn: ({ signal }) => academyService.listUnits(caveId, signal),
+    enabled: Boolean(caveId),
+    staleTime: 60_000,
   })
 }
 

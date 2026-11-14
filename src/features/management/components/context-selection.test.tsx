@@ -19,10 +19,29 @@ it('offers only supplied contexts and supports keyboard selection', async () => 
       onRetry={vi.fn()}
     />,
   )
+  expect(screen.getByText('Academia A')).toBeInTheDocument()
+  expect(screen.getByText('Professor B')).toBeInTheDocument()
   expect(screen.getAllByRole('button', { name: /Selecionar/ })).toHaveLength(2)
   await userEvent.tab()
   await userEvent.keyboard('{Enter}')
   expect(onSelect).toHaveBeenCalledWith(contexts[0])
+})
+
+it('disables the options and identifies the context being confirmed', () => {
+  render(
+    <ContextSelection
+      contexts={contexts}
+      status="success"
+      pendingId="one"
+      onSelect={vi.fn()}
+      onRetry={vi.fn()}
+    />,
+  )
+
+  expect(
+    screen.getByRole('button', { name: /Selecionar Academia A/ }),
+  ).toBeDisabled()
+  expect(screen.getByText('Validando…')).toBeInTheDocument()
 })
 
 it('renders empty and recoverable error states without context options', async () => {

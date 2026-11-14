@@ -1,5 +1,7 @@
 # Feature: real authenticated management routes
 
+> Superseded by [`specs/migrate-routes/spec.md`](../migrate-routes/spec.md). The local fallback context and practitioner login described below were replaced by the desktop login and server-confirmed contexts.
+
 ## Context and problem
 
 The desktop management screens for academies, classes and evaluations were wired to the API but only reachable through `/preview/*`. The login page linked to a local context preview, and `/academies`, `/classes` and `/evaluations` were either empty protected routes or preview-only. Users could sign in but had no real product path to the data.
