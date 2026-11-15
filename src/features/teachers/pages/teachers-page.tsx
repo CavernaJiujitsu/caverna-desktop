@@ -55,7 +55,7 @@ export default function TeachersPage() {
         title="Professores"
         description={
           caveId
-            ? 'Professores da sua caverna.'
+            ? 'O acesso às aulas é controlado por unidade.'
             : 'Professores de todas as cavernas.'
         }
       />
@@ -80,9 +80,7 @@ export default function TeachersPage() {
               Buscar
             </Button>
           </form>
-          <h2 id="teachers-list-title" className="mt-6 text-lg font-semibold">
-            Lista de professores
-          </h2>
+          <h2 id="teachers-list-title" className="mt-6 text-lg font-semibold">Professores cadastrados</h2>
           <div className="mt-3">
             {teachers.isPending ? (
               <LoadingState label="Carregando professores…" />
@@ -101,29 +99,15 @@ export default function TeachersPage() {
               />
             ) : (
               <>
-                <ul
-                  className="divide-y divide-border rounded-xl border border-border bg-card"
-                  aria-label="Professores"
-                >
+                <div className="overflow-x-auto rounded-xl border border-border bg-card"><table className="w-full min-w-[560px] text-left text-sm" aria-label="Professores"><thead className="bg-accent text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Professor</th><th className="px-4 py-3 font-medium">E-mail</th><th className="px-4 py-3 font-medium">Ação</th></tr></thead><tbody className="divide-y divide-border">
                   {items.map((teacher) => (
-                    <li
-                      key={teacher.id}
-                      className="flex flex-wrap items-center justify-between gap-3 p-4"
-                    >
-                      <div>
-                        <p className="font-medium">{teacher.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {teacher.email ?? 'E-mail não informado'}
-                        </p>
-                      </div>
-                      <Button asChild size="sm" variant="outline">
+                    <tr key={teacher.id}><td className="px-4 py-3 font-medium">{teacher.name}</td><td className="px-4 py-3 text-muted-foreground">{teacher.email ?? 'E-mail não informado'}</td><td className="px-4 py-3"><Button asChild size="sm" variant="link">
                         <Link to={`${routes.teachers}/${teacher.id}`}>
-                          Ver detalhes
+                          Ver professor
                         </Link>
-                      </Button>
-                    </li>
+                      </Button></td></tr>
                   ))}
-                </ul>
+                </tbody></table></div>
                 <nav
                   className="mt-4 flex items-center justify-between gap-3"
                   aria-label="Paginação de professores"

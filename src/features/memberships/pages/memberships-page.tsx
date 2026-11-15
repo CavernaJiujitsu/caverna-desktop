@@ -2,6 +2,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { LoaderCircle, Trash2, Users } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { routes } from '@/app/router/routes'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import { useAllManagedCaveUnits } from '@/features/academies/hooks/use-academies'
 import { usePlatformCaves } from '@/features/platform/hooks/use-platform-caves'
@@ -147,6 +149,9 @@ function StudentList({ caveUnitId }: { caveUnitId: string }) {
             <Trash2 className="size-4" aria-hidden="true" />
             Desvincular
           </Button>
+          <Button asChild type="button" size="sm" variant="outline">
+            <Link to={routes.evaluations}>Validar faixa</Link>
+          </Button>
         </li>
       ))}
     </ul>
@@ -180,8 +185,8 @@ export default function MembershipsPage() {
   return (
     <ManagementShell>
       <PageHeader
-        title="Matrículas de alunos"
-        description="Selecione uma unidade para consultar e gerenciar seus alunos."
+        title="Alunos"
+        description="Consulte matrículas por unidade. A aprovação da validação de faixa libera a trilha automaticamente."
       />
 
       {isPlatformContext ? (

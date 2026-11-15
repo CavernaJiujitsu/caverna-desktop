@@ -11,10 +11,25 @@ it('sends the backend queue filters and parses the envelope', async () => {
     },
   } as never)
 
-  await expect(listEvaluations({ date: '2026-11-05', teacherId: 'teacher-1' })).resolves.toHaveLength(1)
+  await expect(
+    listEvaluations({
+      caveId: 'cave-1',
+      date: '2026-11-05',
+      teacherId: 'teacher-1',
+      status: 'PENDING',
+    }),
+  ).resolves.toHaveLength(1)
   expect(http.get).toHaveBeenCalledWith('/belt-validations', expect.objectContaining({
-    params: expect.objectContaining({ date: '2026-11-05', teacherId: 'teacher-1' }),
+    params: expect.objectContaining({
+      caveId: 'cave-1',
+      date: '2026-11-05',
+      teacherId: 'teacher-1',
+      status: 'PENDING',
+    }),
   }))
+  const request = vi.mocked(http.get).mock.calls[0]?.[1]
+  expect(request?.params).not.toHaveProperty('page')
+  expect(request?.params).not.toHaveProperty('limit')
 })
 
 it('derives a local date input without a fixed calendar date', () => {

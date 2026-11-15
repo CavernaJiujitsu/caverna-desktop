@@ -15,12 +15,20 @@ import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { Button } from '@/shared/components/ui/button'
 import { notify } from '@/shared/lib/notifications'
 import { AppError } from '@/shared/types/app-error'
+import { useSession } from '@/shared/session/session'
 
 export default function TeacherDetailPage() {
   const { teacherId = '' } = useParams<{ teacherId: string }>()
   const navigate = useNavigate()
   const teacher = useTeacher(teacherId)
   const mutations = useTeacherMutations()
+  const { selectedContext, session } = useSession()
+  const caveId =
+    selectedContext?.caveId ??
+    session?.caveId ??
+    (selectedContext?.role === 'academy'
+      ? selectedContext.id.replace(/^academy:/, '')
+      : '')
 
   async function removeTeacher() {
     if (
@@ -112,8 +120,8 @@ export default function TeacherDetailPage() {
               teacher={teacher.data}
               onSaved={() => void teacher.refetch()}
             />
-            <TeacherUnitLinkForm teacherId={teacher.data.id} action="link" />
-            <TeacherUnitLinkForm teacherId={teacher.data.id} action="unlink" />
+            <TeacherUnitLinkForm teacherId={teacher.data.id} caveId={caveId} action="link" />
+            <TeacherUnitLinkForm teacherId={teacher.data.id} caveId={caveId} action="unlink" />
           </div>
         </div>
       )}

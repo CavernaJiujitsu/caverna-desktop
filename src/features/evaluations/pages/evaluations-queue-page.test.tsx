@@ -3,7 +3,18 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { expect, it, vi } from 'vitest'
 import EvaluationsQueuePage from '@/features/evaluations/pages/evaluations-queue-page'
-import { SessionProvider } from '@/shared/session/session-context'
+
+vi.mock('@/shared/session/session', () => ({
+  useSession: () => ({
+    selectedContext: {
+      id: 'academy:cave-1',
+      role: 'academy',
+      caveId: 'cave-1',
+      label: 'Caverna de teste',
+      detail: '',
+    },
+  }),
+}))
 
 vi.mock('@/features/evaluations/hooks/use-evaluations', () => ({
   useEvaluations: () => ({
@@ -12,9 +23,9 @@ vi.mock('@/features/evaluations/hooks/use-evaluations', () => ({
     data: [
       {
         id: 'evaluation-1',
-        status: 'SCHEDULED',
-        scheduledAt: '2026-11-05T22:00:00.000Z',
-        teacher: { id: 'teacher-1', user: { name: 'Rafael Souza' } },
+        status: 'PENDING',
+        scheduledAt: null,
+        teacher: null,
         practitioner: { user: { name: 'Marina Costa' } },
         targetBelt: { name: 'Branca' },
         class: {
@@ -41,11 +52,9 @@ vi.mock('@/features/teachers/hooks/use-teachers', () => ({
 it('renders evaluations returned by the queue query', () => {
   render(
     <MemoryRouter>
-      <SessionProvider>
-        <QueryClientProvider client={new QueryClient()}>
-          <EvaluationsQueuePage />
-        </QueryClientProvider>
-      </SessionProvider>
+      <QueryClientProvider client={new QueryClient()}>
+        <EvaluationsQueuePage />
+      </QueryClientProvider>
     </MemoryRouter>,
   )
   expect(screen.getByText('Marina Costa')).toBeInTheDocument()

@@ -4,7 +4,6 @@ import {
   useApproveEvaluation,
   useEvaluations,
 } from '@/features/evaluations/hooks/use-evaluations'
-import { getLocalDateInputValue } from '@/features/evaluations/services/evaluation.service'
 import { useTeacherOptions } from '@/features/teachers/hooks/use-teachers'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
@@ -12,14 +11,26 @@ import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { Input } from '@/shared/components/ui/input'
 import { notify } from '@/shared/lib/notifications'
+import { useSession } from '@/shared/session/session'
 
 export default function EvaluationsQueuePage() {
+  const { selectedContext, session } = useSession()
+  const isTeacher = selectedContext?.role === 'teacher'
+  const caveId =
+    selectedContext?.role === 'academy' ? (selectedContext.caveId ?? '') : ''
   const [filters, setFilters] = useState({
-    date: getLocalDateInputValue(),
+    date: '',
     teacherId: '',
+    status: 'PENDING' as const,
   })
-  const query = useEvaluations(filters)
-  const teachers = useTeacherOptions()
+  const teacherId = isTeacher ? (session?.teacherId ?? '') : filters.teacherId
+  const query = useEvaluations({
+    ...filters,
+    caveId,
+    teacherId,
+    status: isTeacher ? 'SCHEDULED' : 'PENDING',
+  })
+  const teachers = useTeacherOptions(caveId, Boolean(caveId))
   const approve = useApproveEvaluation()
 
   return (
@@ -30,10 +41,12 @@ export default function EvaluationsQueuePage() {
             Avaliações
           </p>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-            Fila de graduação
+            {isTeacher ? 'Validações das minhas aulas' : 'Fila de graduação'}
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Consulte as avaliações da API por data e professor responsável.
+            {isTeacher
+              ? 'Validações agendadas para suas aulas com presença confirmada.'
+              : 'Alunos desta caverna que declararam faixa e aguardam validação.'}
           </p>
         </header>
         <section
@@ -42,7 +55,7 @@ export default function EvaluationsQueuePage() {
         >
           <div className="grid gap-4 md:grid-cols-2">
             <label className="grid gap-2 text-sm font-medium">
-              Data local
+              Data da aula (opcional)
               <Input
                 type="date"
                 value={filters.date}
@@ -86,6 +99,9 @@ export default function EvaluationsQueuePage() {
             </label>
           </div>
         </section>
+        {!caveId && !teacherId ? (
+          <ErrorState message="Selecione um contexto de caverna para consultar a fila de validações." />
+        ) : null}
         <section className="mt-6" aria-labelledby="evaluation-list-title">
           <div className="mb-3 flex items-center justify-between">
             <h2 id="evaluation-list-title" className="text-lg font-semibold">
@@ -95,7 +111,7 @@ export default function EvaluationsQueuePage() {
               {query.data?.length ?? 0} avaliação(ões)
             </span>
           </div>
-          {query.isLoading ? (
+          {!caveId && !teacherId ? null : query.isLoading ? (
             <LoadingState label="Carregando avaliações…" />
           ) : query.isError ? (
             <ErrorState
@@ -105,7 +121,7 @@ export default function EvaluationsQueuePage() {
           ) : !query.data?.length ? (
             <EmptyState
               title="Nenhuma avaliação encontrada"
-              description="Ajuste a data ou o professor para consultar outra fila."
+              description="Nenhum aluno desta caverna aguarda validação de faixa."
             />
           ) : (
             <div className="grid gap-3">

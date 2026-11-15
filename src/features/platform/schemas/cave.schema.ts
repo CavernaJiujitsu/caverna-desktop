@@ -7,12 +7,15 @@ export const platformCaveUnitSchema = z.object({
   neighborhood: z.string().nullable().optional(),
   latitude: z.string().or(z.number()).optional(),
   longitude: z.string().or(z.number()).optional(),
+  active: z.boolean().default(true),
 })
 
 export const platformCaveSchema = z
   .object({
     id: z.string().uuid(),
     name: z.string(),
+    active: z.boolean().default(true),
+    units: z.array(platformCaveUnitSchema).optional(),
   })
   .passthrough()
 
@@ -84,6 +87,51 @@ export const createCaveAdminSchema = z
       })
     }
   })
+
+// --- Nova caverna ---
+
+const caveUnitInputSchema = z.object({
+  name: z.string().trim().min(1, 'Informe o nome da unidade.'),
+  address: optionalTrimmedString,
+  neighborhood: optionalTrimmedString,
+  latitude: z
+    .preprocess(
+      (value) =>
+        typeof value === 'number' ? value : Number(value),
+      z.number().finite('Informe uma latitude válida.'),
+    )
+    .refine((value) => value >= -90 && value <= 90, {
+      message: 'Latitude deve estar entre -90 e 90.',
+    }),
+  longitude: z
+    .preprocess(
+      (value) =>
+        typeof value === 'number' ? value : Number(value),
+      z.number().finite('Informe uma longitude válida.'),
+    )
+    .refine((value) => value >= -180 && value <= 180, {
+      message: 'Longitude deve estar entre -180 e 180.',
+    }),
+})
+
+export const createPlatformCaveSchema = z.object({
+  name: z.string().trim().min(1, 'Informe o nome da caverna.'),
+  units: z.array(caveUnitInputSchema).min(1, 'Informe ao menos uma unidade.'),
+})
+
+export type CreatePlatformCaveInput = z.infer<typeof createPlatformCaveSchema>
+
+// --- Atualizar caverna ---
+
+export const updatePlatformCaveSchema = z.object({
+  name: optionalTrimmedString,
+  active: z.boolean().optional(),
+}).refine(
+  (values) => values.name !== undefined || values.active !== undefined,
+  'Informe ao menos um campo para atualizar.',
+)
+
+export type UpdatePlatformCaveInput = z.infer<typeof updatePlatformCaveSchema>
 
 export type PlatformCaveUnit = z.infer<typeof platformCaveUnitSchema>
 export type PlatformCave = z.infer<typeof platformCaveSchema>

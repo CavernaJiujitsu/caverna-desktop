@@ -118,8 +118,8 @@ export default function UnitsPage() {
   return (
     <ManagementShell>
       <PageHeader
-        title="Unidades"
-        description="Gerencie unidades ativas e arquivadas da caverna selecionada."
+        title="Unidades da academia"
+        description="Aulas e professores têm acesso organizado por unidade."
       />
 
       {isPlatformContext ? (
@@ -183,9 +183,7 @@ export default function UnitsPage() {
               </Button>
             </form>
 
-            <h2 id="units-list-title" className="mt-6 text-lg font-semibold">
-              Lista de unidades
-            </h2>
+            <h2 id="units-list-title" className="mt-6 text-lg font-semibold">Unidades cadastradas</h2>
             <div className="mt-3">
               {units.isPending ? (
                 <LoadingState label="Carregando unidades…" />

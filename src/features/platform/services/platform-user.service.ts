@@ -35,6 +35,7 @@ export const platformUserService = {
           limit: query.limit,
           ...(query.search ? { search: query.search } : {}),
           ...(query.role ? { role: query.role } : {}),
+          ...(query.caveId ? { caveId: query.caveId } : {}),
         },
         signal,
       })
