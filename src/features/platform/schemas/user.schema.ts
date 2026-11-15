@@ -18,6 +18,7 @@ export const PLATFORM_USERS_MAX_PAGE_SIZE = 100
 export type PlatformUsersFilter = {
   search?: string
   role?: UserRole
+  caveId?: string
 }
 
 export type PlatformUsersQuery = PlatformUsersFilter & {

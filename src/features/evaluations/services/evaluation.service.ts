@@ -28,7 +28,12 @@ const responseSchema = z.object({
   data: z.object({ data: z.array(evaluationSchema) }),
 })
 
-export type EvaluationFilters = { date: string; teacherId: string }
+export type EvaluationFilters = {
+  caveId: string
+  date: string
+  teacherId: string
+  status?: 'PENDING' | 'SCHEDULED'
+}
 export type Evaluation = z.infer<typeof evaluationSchema>
 
 export function getLocalDateInputValue(date = new Date()) {
@@ -44,10 +49,10 @@ export async function listEvaluations(
 ) {
   const response = await http.get('/belt-validations', {
     params: {
-      page: 1,
-      limit: 100,
+      caveId: filters.caveId || undefined,
       date: filters.date || undefined,
       teacherId: filters.teacherId || undefined,
+      status: filters.status,
     },
     signal,
   })

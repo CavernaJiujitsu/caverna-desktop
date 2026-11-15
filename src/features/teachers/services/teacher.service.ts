@@ -79,6 +79,18 @@ export const teacherService = {
     }
   },
 
+  async linkExisting(input: { userId: string }): Promise<Teacher> {
+    try {
+      const { data } = await http.post<unknown>(
+        '/teachers/existing',
+        input,
+      )
+      return teacherSchemaEnvelope.parse(data).data
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
+
   async update(teacherId: string, input: TeacherUpdateInput): Promise<Teacher> {
     try {
       const { data } = await http.patch<unknown>(

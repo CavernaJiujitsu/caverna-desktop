@@ -36,7 +36,7 @@ const listResponseSchema = z.object({
   data: z.object({ data: z.array(apiClassSchema) }),
 })
 const itemResponseSchema = z.object({ data: apiClassSchema })
-export type ClassFilters = { unitId: string; date: string }
+export type ClassFilters = { unitId: string; date: string; teacherId?: string }
 function toIso(date: string, time: string) {
   return new Date(`${date}T${time}:00`).toISOString()
 }
@@ -103,7 +103,12 @@ const classEnrollmentDtoSchema = z.object({
 export const classService = {
   async list(filters: ClassFilters, signal?: AbortSignal) {
     const response = await http.get('/classes', {
-      params: { page: 1, limit: 100, caveUnitId: filters.unitId || undefined },
+      params: {
+        page: 1,
+        limit: 100,
+        caveUnitId: filters.unitId || undefined,
+        teacherId: filters.teacherId || undefined,
+      },
       signal,
     })
     const items = listResponseSchema.parse(response.data).data.data.map(toClass)

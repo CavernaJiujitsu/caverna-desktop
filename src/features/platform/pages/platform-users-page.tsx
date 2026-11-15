@@ -20,6 +20,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { notify } from '@/shared/lib/notifications'
 import { AppError } from '@/shared/types/app-error'
+import { useSession } from '@/shared/session/session'
 import { USER_ROLES, type UserRole } from '@/shared/types/user-role'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, PLATFORM_USERS_MAX_PAGE_SIZE] as const
@@ -206,6 +207,7 @@ function UserDetail({
 }
 
 export default function PlatformUsersPage() {
+  const { selectedContext } = useSession()
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
@@ -216,6 +218,9 @@ export default function PlatformUsersPage() {
   const filters: PlatformUsersFilter = {
     ...(search ? { search } : {}),
     ...(role ? { role } : {}),
+    ...(selectedContext?.role === 'academy' && selectedContext?.caveId
+      ? { caveId: selectedContext.caveId }
+      : {}),
   }
   const isAll = pageSize === ALL_PAGE_SIZE
   const users = usePlatformUsers(

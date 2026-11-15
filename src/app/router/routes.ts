@@ -11,6 +11,7 @@ export const routes = {
   memberships: '/memberships',
   teachers: '/teachers',
   platformCaves: '/platform/caves',
+  platformCavesCreate: '/platform/caves/create',
   caveAdministrators: '/administradores',
   platformUsers: '/platform/users',
   workouts: '/workouts',

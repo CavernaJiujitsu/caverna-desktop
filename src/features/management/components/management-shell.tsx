@@ -24,16 +24,16 @@ const navigationByRole: Record<ManagementRole, NavigationItem[]> = {
     { to: routes.workouts, label: 'Treinos (piloto)' },
   ],
   academy: [
-    { to: routes.units, label: 'Unidades' },
-    { to: routes.caveAdministrators, label: 'Administradores' },
-    { to: routes.schedules, label: 'Horários' },
+    { to: routes.memberships, label: 'Alunos' },
     { to: routes.teachers, label: 'Professores' },
-    { to: routes.memberships, label: 'Matrículas' },
-    { to: routes.workouts, label: 'Treinos (piloto)' },
+    { to: routes.caveAdministrators, label: 'Administradores' },
+    { to: routes.classes, label: 'Aulas' },
+    { to: routes.units, label: 'Unidades' },
+    { to: routes.evaluations, label: 'Validações de faixa' },
   ],
   teacher: [
-    { to: routes.schedules, label: 'Meus horários' },
-    { to: routes.workouts, label: 'Treinos (piloto)' },
+    { to: routes.classes, label: 'Minhas aulas' },
+    { to: routes.evaluations, label: 'Validações' },
   ],
 }
 

@@ -67,6 +67,11 @@ export function useTeacherMutations() {
       mutationFn: (input: TeacherCreateInput) => teacherService.create(input),
       onSuccess: invalidateAll,
     }),
+    linkExisting: useMutation({
+      mutationFn: (input: { userId: string }) =>
+        teacherService.linkExisting(input),
+      onSuccess: invalidateAll,
+    }),
     update: useMutation({
       mutationFn: ({
         teacherId,

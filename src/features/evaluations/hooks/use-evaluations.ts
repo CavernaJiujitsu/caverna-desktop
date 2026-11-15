@@ -5,6 +5,7 @@ export function useEvaluations(filters: EvaluationFilters) {
   return useQuery({
     queryKey: ['evaluations', filters],
     queryFn: ({ signal }) => listEvaluations(filters, signal),
+    enabled: Boolean(filters.caveId || filters.teacherId),
     staleTime: 60_000,
     retry: 1,
   })

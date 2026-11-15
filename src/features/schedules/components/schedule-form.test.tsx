@@ -141,7 +141,7 @@ describe('ScheduleForm', () => {
     })
   })
 
-  it('omits the unit id to create a schedule for the cave scope', async () => {
+  it('requires a unit before creating a schedule', async () => {
     mutationMocks.create.mockResolvedValue(schedule)
 
     render(<ScheduleForm />)
@@ -155,35 +155,18 @@ describe('ScheduleForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Criar horário' }))
 
     await waitFor(() => {
-      expect(mutationMocks.create).toHaveBeenCalledWith(
-        expect.not.objectContaining({ caveUnitId: expect.anything() }),
-      )
+      expect(screen.getByText('Informe um UUID válido.')).toBeInTheDocument()
     })
+    expect(mutationMocks.create).not.toHaveBeenCalled()
   })
 
-  it('creates a cave-scoped schedule when no units exist', async () => {
+  it('explains that a unit is required when none exist', async () => {
     mutationMocks.units = []
-    mutationMocks.create.mockResolvedValue(schedule)
 
     render(<ScheduleForm />)
 
     expect(
-      screen.getByText(
-        'Sem unidades cadastradas; o horário será aplicado à caverna.',
-      ),
+      screen.getByText('Cadastre uma unidade antes de criar o horário.'),
     ).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Título'), {
-      target: { value: 'Treino de Quinta' },
-    })
-    fireEvent.change(screen.getByLabelText('Professor'), {
-      target: { value: schedule.teacherId },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Criar horário' }))
-
-    await waitFor(() => {
-      expect(mutationMocks.create).toHaveBeenCalledWith(
-        expect.not.objectContaining({ caveUnitId: expect.anything() }),
-      )
-    })
   })
 })

@@ -21,10 +21,6 @@ const time = z.string().regex(timePattern, 'Use o formato HH:mm (24 horas).')
 const date = z
   .string()
   .regex(datePattern, 'Use uma data no formato AAAA-MM-DD.')
-const optionalUuidInput = z
-  .union([z.literal(''), uuid])
-  .transform((value) => (value === '' ? undefined : value))
-
 export const scheduleSchema = z
   .object({
     id: uuid,
@@ -102,7 +98,7 @@ function refinePeriod(
 
 export const createScheduleSchema = z
   .object({
-    caveUnitId: uuid.optional(),
+    caveUnitId: uuid,
     teacherId: uuid,
     ...scheduleFields,
     active: z.boolean().optional(),
@@ -120,7 +116,7 @@ export const updateScheduleSchema = z
 // Shared UI schema so the same form can create and edit a schedule.
 export const scheduleFormSchema = z
   .object({
-    caveUnitId: optionalUuidInput,
+    caveUnitId: uuid,
     teacherId: uuid,
     ...scheduleFields,
     active: z.boolean(),

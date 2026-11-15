@@ -51,6 +51,9 @@ const TeacherDetailPage = lazy(
 const PlatformCavesPage = lazy(
   () => import('@/features/platform/pages/platform-caves-page'),
 )
+const PlatformCaveCreatePage = lazy(
+  () => import('@/features/platform/pages/platform-cave-create-page'),
+)
 const CaveAdministratorsPage = lazy(
   () => import('@/features/platform/pages/cave-administrators-page'),
 )
@@ -131,6 +134,15 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />,
   },
   {
+    path: routes.evaluations,
+    element: (
+      <ProtectedRoute allowedContextRoles={['academy', 'teacher']}>
+        {wrap(<EvaluationsQueuePage />)}
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorPage />,
+  },
+  {
     path: routes.teachers,
     element: (
       <ProtectedRoute allowedContextRoles={[...academyManagementRoles]}>
@@ -153,6 +165,15 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedContextRoles={[...platformRoles]}>
         {wrap(<PlatformCavesPage />)}
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: routes.platformCavesCreate,
+    element: (
+      <ProtectedRoute allowedContextRoles={[...platformRoles]}>
+        {wrap(<PlatformCaveCreatePage />)}
       </ProtectedRoute>
     ),
     errorElement: <ErrorPage />,
@@ -214,11 +235,6 @@ export const router = createBrowserRouter([
   {
     path: routes.classes,
     element: <ProtectedRoute>{wrap(<ClassesManagementPage />)}</ProtectedRoute>,
-    errorElement: <ErrorPage />,
-  },
-  {
-    path: routes.evaluations,
-    element: <ProtectedRoute>{wrap(<EvaluationsQueuePage />)}</ProtectedRoute>,
     errorElement: <ErrorPage />,
   },
   { path: '/dashboard', element: <Navigate to={routes.management} replace /> },

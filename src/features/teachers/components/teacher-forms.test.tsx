@@ -1,7 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TeacherCreateForm } from '@/features/teachers/components/teacher-forms'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false, gcTime: 0 },
+  },
+})
+
+function renderWithProviders(ui: React.ReactElement) {
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  )
+}
 
 const formMocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -28,6 +41,7 @@ vi.mock('@/features/academies', () => ({
 vi.mock('@/features/teachers/hooks/use-teachers', () => ({
   useTeacherMutations: () => ({
     create: { isPending: false, mutateAsync: formMocks.create },
+    linkExisting: { isPending: false, mutateAsync: vi.fn() },
   }),
 }))
 
@@ -57,7 +71,7 @@ describe('TeacherCreateForm', () => {
   }
 
   it('creates a cave-scoped teacher without sending unit ids by default', async () => {
-    render(<TeacherCreateForm />)
+    renderWithProviders(<TeacherCreateForm />)
     await fillRequiredFields()
 
     fireEvent.click(screen.getByRole('button', { name: 'Criar professor' }))
@@ -72,7 +86,7 @@ describe('TeacherCreateForm', () => {
   })
 
   it('sends selected unit ids with the cave name', async () => {
-    render(<TeacherCreateForm />)
+    renderWithProviders(<TeacherCreateForm />)
     await fillRequiredFields()
     await userEvent.click(
       screen.getByRole('checkbox', { name: 'Adicionar a unidade' }),
@@ -103,7 +117,7 @@ describe('TeacherCreateForm', () => {
   })
 
   it('requires a selection when adding a teacher to specific units', async () => {
-    render(<TeacherCreateForm />)
+    renderWithProviders(<TeacherCreateForm />)
     await userEvent.click(
       screen.getByRole('checkbox', { name: 'Adicionar a unidade' }),
     )
@@ -119,7 +133,7 @@ describe('TeacherCreateForm', () => {
 
   it('allows cave-scoped creation when the cave has no units', async () => {
     formMocks.units = []
-    render(<TeacherCreateForm />)
+    renderWithProviders(<TeacherCreateForm />)
 
     expect(
       screen.getByText('Esta caverna ainda não tem unidades cadastradas.'),

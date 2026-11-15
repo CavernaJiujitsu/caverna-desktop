@@ -77,9 +77,10 @@ describe('scheduleService', () => {
     expect(mockedPost).toHaveBeenCalledWith('/training/schedules', input)
   })
 
-  it('creates a cave-scoped schedule without a unit id', async () => {
+  it('creates a schedule for its selected unit', async () => {
     mockedPost.mockResolvedValueOnce(envelope(schedule))
     const input = {
+      caveUnitId: unitId,
       teacherId,
       title: 'Treino de Segunda',
       dayOfWeek: 1,

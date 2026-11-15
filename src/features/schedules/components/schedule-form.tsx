@@ -2,7 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { Link } from 'react-router-dom'
 import { useCaveUnits } from '@/features/academies'
+import { routes } from '@/app/router/routes'
 import { useTeacherOptions } from '@/features/teachers/hooks/use-teachers'
 import {
   SCHEDULE_DAYS,
@@ -132,7 +134,7 @@ export function ScheduleForm({
         )
       } else {
         const input: CreateScheduleInput = {
-          ...(values.caveUnitId ? { caveUnitId: values.caveUnitId } : {}),
+          caveUnitId: values.caveUnitId,
           teacherId: values.teacherId,
           title: values.title,
           dayOfWeek: values.dayOfWeek,
@@ -249,18 +251,27 @@ export function ScheduleForm({
                 aria-invalid={!!errors.caveUnitId}
                 {...register('caveUnitId')}
               >
-                <option value="">Toda a caverna (todas as unidades)</option>
+                <option value="">Selecione uma unidade</option>
                 {units.map((unit) => (
                   <option key={unit.id} value={unit.id}>
                     {unit.name}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">
-                {units.length === 0
-                  ? 'Sem unidades cadastradas; o horário será aplicado à caverna.'
-                  : 'Sem seleção específica, o horário será aplicado à caverna.'}
-              </p>
+              {errors.caveUnitId && (
+                <p
+                  id="schedule-unit-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {errors.caveUnitId.message}
+                </p>
+              )}
+              {units.length === 0 && !unitsQuery.isPending && !unitsQuery.isError && (
+                <p className="text-sm text-muted-foreground">
+                  Cadastre uma unidade antes de criar o horário.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label htmlFor="schedule-teacher" className="text-sm font-medium">
@@ -307,7 +318,15 @@ export function ScheduleForm({
                 !teachersQuery.isError &&
                 teachers.length === 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Cadastre um professor antes de criar o horário.
+                    Cadastre e vincule um professor a uma unidade desta caverna
+                    antes de criar o horário.{' '}
+                    <Link
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                      to={routes.teachers}
+                    >
+                      Gerenciar professores
+                    </Link>
+                    .
                   </p>
                 )}
             </div>
