@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   usePlatformCaves: vi.fn(),
   useStudentMemberships: vi.fn(),
   useStudentMembershipMutations: vi.fn(),
-  useCreatePractitioner: vi.fn(),
 }))
 
 vi.mock('@/features/academies/hooks/use-academies', () => ({
@@ -27,10 +26,6 @@ vi.mock('@/features/platform/hooks/use-platform-caves', () => ({
 vi.mock('@/features/memberships/hooks/use-memberships', () => ({
   useStudentMemberships: mocks.useStudentMemberships,
   useStudentMembershipMutations: mocks.useStudentMembershipMutations,
-}))
-
-vi.mock('@/features/practitioners/hooks/use-practitioners', () => ({
-  useCreatePractitioner: mocks.useCreatePractitioner,
 }))
 
 const activeUnit = {
@@ -108,13 +103,6 @@ beforeEach(() => {
   mocks.useStudentMembershipMutations.mockReturnValue({
     link: { isPending: false, mutateAsync: vi.fn() },
     unlink: { isPending: false, mutateAsync: vi.fn() },
-  })
-  mocks.useCreatePractitioner.mockReturnValue({
-    mutateAsync: vi.fn().mockResolvedValue({
-      id: 'practitioner-1',
-      user: { name: 'Aluno Teste', email: 'aluno@example.com' },
-    }),
-    isPending: false,
   })
 })
 
@@ -199,41 +187,4 @@ it('shows loading and API errors for the available unit list', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Não foi possível carregar as unidades.',
   )
-})
-
-it('cadastra e matricula um novo aluno na unidade selecionada', async () => {
-  renderPage(caveAdminContext)
-
-  await userEvent.selectOptions(
-    screen.getByRole('combobox', { name: 'Unidade' }),
-    'unit-active',
-  )
-
-  await waitFor(() =>
-    expect(screen.getAllByText('Unidade Centro · Centro')).toHaveLength(2),
-  )
-
-  await userEvent.type(screen.getByLabelText('Nome completo'), 'Aluno Teste')
-  await userEvent.type(screen.getByLabelText('E-mail'), 'aluno@caverna.com')
-  await userEvent.type(screen.getByLabelText('Senha'), 'senha123')
-  await userEvent.type(screen.getByLabelText('Confirmar senha'), 'senha123')
-
-  await userEvent.click(screen.getByRole('button', { name: 'Cadastrar aluno' }))
-
-  await waitFor(() =>
-    expect(mocks.useCreatePractitioner().mutateAsync).toHaveBeenCalledWith({
-      name: 'Aluno Teste',
-      email: 'aluno@caverna.com',
-      password: 'senha123',
-    }),
-  )
-  await waitFor(() =>
-    expect(
-      mocks.useStudentMembershipMutations().link.mutateAsync,
-    ).toHaveBeenCalledWith({
-      practitionerId: 'practitioner-1',
-      caveUnitId: 'unit-active',
-    }),
-  )
-  expect(mocks.useStudentMemberships().refetch).toHaveBeenCalled()
 })

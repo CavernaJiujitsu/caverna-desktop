@@ -42,6 +42,9 @@ const SchedulesPage = lazy(
 const MembershipsPage = lazy(
   () => import('@/features/memberships/pages/memberships-page'),
 )
+const PractitionerCreatePage = lazy(
+  () => import('@/features/practitioners/pages/practitioner-create-page'),
+)
 const TeachersPage = lazy(
   () => import('@/features/teachers/pages/teachers-page'),
 )
@@ -129,6 +132,15 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedContextRoles={[...academyManagementRoles]}>
         {wrap(<MembershipsPage />)}
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: routes.practitionersCreate,
+    element: (
+      <ProtectedRoute allowedContextRoles={[...academyManagementRoles]}>
+        {wrap(<PractitionerCreatePage />)}
       </ProtectedRoute>
     ),
     errorElement: <ErrorPage />,
@@ -239,5 +251,9 @@ export const router = createBrowserRouter([
   },
   { path: '/dashboard', element: <Navigate to={routes.management} replace /> },
   { path: '/home', element: <Navigate to={routes.home} replace /> },
+  {
+    path: '/teacher/dashboard',
+    element: <Navigate to={routes.schedules} replace />,
+  },
   { path: '*', element: wrap(<NotFoundPage />) },
 ])

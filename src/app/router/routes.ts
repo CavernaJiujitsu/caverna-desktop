@@ -9,6 +9,7 @@ export const routes = {
   schedules: '/schedules',
   evaluations: '/evaluations',
   memberships: '/memberships',
+  practitionersCreate: '/practitioners/create',
   teachers: '/teachers',
   platformCaves: '/platform/caves',
   platformCavesCreate: '/platform/caves/create',

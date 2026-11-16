@@ -40,6 +40,13 @@ export const practitionerCreateFormSchema = z
         (value) => value === '' || !isNaN(Number(value)),
         'Idade deve ser um número.',
       ),
+    address: z.string().trim().min(1, 'Informe o endereço.'),
+    number: z.string().trim().min(1, 'Informe o número.'),
+    complement: z.string().trim().optional(),
+    neighborhood: z.string().trim().min(1, 'Informe o bairro.'),
+    city: z.string().trim().min(1, 'Informe a cidade.'),
+    latitude: z.string().trim().optional(),
+    longitude: z.string().trim().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'As senhas não coincidem.',
@@ -49,6 +56,10 @@ export const practitionerCreateFormSchema = z
 export type PractitionerCreateFormValues = z.infer<
   typeof practitionerCreateFormSchema
 >
+
+// TODO: confirmar contrato de persistência de endereço com o backend.
+// Por enquanto, o endereço é obrigatório no formulário, mas não é enviado ao
+// serviço de criação (contrato ainda não conhecido).
 
 export type PractitionerUpdateInput = {
   name?: string

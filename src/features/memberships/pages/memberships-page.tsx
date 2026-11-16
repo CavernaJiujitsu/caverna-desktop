@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { LoaderCircle, Trash2, Users } from 'lucide-react'
+import { LoaderCircle, Trash2, UserPlus, Users } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -15,7 +15,6 @@ import {
   studentLinkFormSchema,
   type StudentLinkFormValues,
 } from '@/features/memberships/schemas/membership.schema'
-import { PractitionerCreateForm } from '@/features/memberships/components/practitioner-create-form'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
 import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
@@ -288,8 +287,14 @@ export default function MembershipsPage() {
                 <StudentList caveUnitId={selectedUnit.id} />
               </div>
               <div className="flex flex-col gap-4">
-                <PractitionerCreateForm caveUnitId={selectedUnit.id} />
                 <StudentLinkForm caveUnitId={selectedUnit.id} />
+                <Link
+                  to={routes.practitionersCreate}
+                  className="inline-flex items-center gap-2"
+                >
+                  <UserPlus className="size-4" aria-hidden="true" />
+                  Cadastrar novo aluno
+                </Link>
               </div>
             </section>
           )}
