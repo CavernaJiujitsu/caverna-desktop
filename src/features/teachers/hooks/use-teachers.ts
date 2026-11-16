@@ -33,6 +33,17 @@ export function useTeacher(id: string) {
   })
 }
 
+export function useTeacherCaveUnits(teacherId: string) {
+  return useQuery({
+    queryKey: ['teachers', teacherId, 'cave-units'],
+    queryFn: ({ signal }) =>
+      teacherService.listTeacherCaveUnits(teacherId, signal),
+    enabled: Boolean(teacherId),
+    staleTime: 60_000,
+    retry: 1,
+  })
+}
+
 export function useTeacherOptions(caveId?: string, enabled = Boolean(caveId)) {
   return useQuery({
     queryKey: ['teachers', 'options', caveId] as const,

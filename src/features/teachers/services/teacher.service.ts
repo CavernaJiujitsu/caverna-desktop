@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { envelopeSchema, paginatedSchema } from '@/shared/lib/api-schema'
 import { http, normalizeHttpError } from '@/shared/lib/axios'
 import {
@@ -70,6 +71,22 @@ export const teacherService = {
     }
   },
 
+  async listTeacherCaveUnits(
+    teacherId: string,
+    signal?: AbortSignal,
+  ): Promise<string[]> {
+    try {
+      const { data } = await http.get<unknown>(ENDPOINTS.membership, {
+        params: { teacherId },
+        signal,
+      })
+      const parsed = envelopeSchema(z.array(z.string().uuid())).parse(data)
+      return parsed.data
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
+
   async create(input: TeacherCreateInput): Promise<Teacher> {
     try {
       const { data } = await http.post<unknown>(ENDPOINTS.list, input)
@@ -81,10 +98,7 @@ export const teacherService = {
 
   async linkExisting(input: { userId: string }): Promise<Teacher> {
     try {
-      const { data } = await http.post<unknown>(
-        '/teachers/existing',
-        input,
-      )
+      const { data } = await http.post<unknown>('/teachers/existing', input)
       return teacherSchemaEnvelope.parse(data).data
     } catch (error) {
       throw normalizeHttpError(error)
