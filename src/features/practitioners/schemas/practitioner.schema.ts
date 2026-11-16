@@ -26,6 +26,30 @@ export type PractitionerInput = {
   longitude?: number
 }
 
+export const practitionerCreateFormSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Informe o nome do aluno.'),
+    email: z.string().trim().email('Informe um e-mail válido.'),
+    password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
+    confirmPassword: z.string(),
+    age: z
+      .string()
+      .trim()
+      .optional()
+      .refine(
+        (value) => value === '' || !isNaN(Number(value)),
+        'Idade deve ser um número.',
+      ),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem.',
+    path: ['confirmPassword'],
+  })
+
+export type PractitionerCreateFormValues = z.infer<
+  typeof practitionerCreateFormSchema
+>
+
 export type PractitionerUpdateInput = {
   name?: string
   email?: string
