@@ -100,5 +100,3 @@ export function useArchivePlatformCave() {
       queryClient.invalidateQueries({ queryKey: platformCaveKeys.all }),
   })
 }
-
-

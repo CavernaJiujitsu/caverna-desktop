@@ -26,6 +26,8 @@ const managementContextSchema = z.object({
   role: z.enum(['platform', 'academy', 'teacher']),
   label: z.string().min(1),
   detail: z.string(),
+  // Academy contexts carry the cave scope; dropping it breaks cave-scoped pages.
+  caveId: z.string().min(1).optional(),
 })
 
 const storedSessionSchema = z.object({

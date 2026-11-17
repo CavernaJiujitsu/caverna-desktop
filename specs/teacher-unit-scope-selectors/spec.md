@@ -2,94 +2,46 @@
 
 ## Problema e objetivo
 
-Os formulários de professor e horário pedem UUIDs de unidade/professor,
-forçando o administrador a conhecer identificadores internos. Os formulários
-devem oferecer seletores legíveis e permitir escopo de caverna quando não
-houver vínculo com uma unidade específica.
+Os formulários de professor e horário pediam UUIDs de unidade/professor e não
+funcionavam fora do contexto de caverna. Eles devem oferecer seletores
+legíveis, derivados do escopo do contexto confirmado.
 
 ## Escopo
 
-- Criar professor com seleção de várias unidades da caverna ativa.
-- Permitir criar professor sem selecionar unidade; nesse caso, omitir
-  `caveUnitIds` para que o backend associe o professor à caverna e a todas as
-  unidades existentes e futuras.
-- Criar horário com dropdown de professor e unidade da caverna ativa.
-- Manter professor obrigatório no horário. A unidade é opcional; sem unidade
-  selecionada, omitir `caveUnitId` e deixar o backend aplicar o escopo da
-  caverna autenticada a todas as unidades existentes e futuras.
-- Não alterar os identificadores persistidos nem expô-los nos formulários.
+- Criar professor com nome, e-mail, senha inicial (mín. 8) e seleção opcional
+  de unidades:
+  - plataforma: escolher a caverna e depois as unidades (opcional);
+  - caverna: unidades da própria caverna, com ao menos uma obrigatória.
+- Detalhe do professor lista todas as unidades do escopo (todas as cavernas na
+  plataforma, a própria caverna para o gestor) com caixas de seleção; marcar
+  ou desmarcar vincula/desvincula imediatamente.
+- Remover o professor remove somente o perfil (a conta é mantida se tiver
+  outros acessos); 409 se houver aulas.
+- Horários: no contexto de professor, o professor é fixo (a própria sessão) e
+  as unidades vêm de `GET /teachers/:id`; no contexto de caverna, unidades da
+  caverna e professores da caverna.
 
-Fora do escopo: alterar o backend, editar vínculos de professor no detalhe,
-selecionar unidades de outras cavernas e mudar os contratos de leitura de
-horários.
+Fora do escopo: tornar um usuário existente professor (feito em "Usuários e
+acessos" via `POST /platform/users/:id/access`).
 
-## Requisitos
+## Contratos
 
-- A criação de professor exibe o checkbox “Adicionar a unidade”. Marcado,
-  habilita um dropdown multi-select e exige uma ou mais unidades. Desmarcado,
-  omite `caveUnitIds`.
-- O tooltip explica que marcar a opção vincula o professor somente às unidades
-  selecionadas.
-- A criação de horário lista professores e unidades pelo nome; ambos são
-  carregados do escopo da caverna ativa.
-- Unidades e professor são enviados por seus IDs internamente.
-- Carregamento, erro, ausência de unidades e ausência de professores têm
-  estados explícitos; falha ao carregar o catálogo não pode ser confundida com
-  uma caverna sem unidades.
-- Edição de horário mantém unidade e professor imutáveis, conforme o contrato
-  atual.
-
-## Contratos e tipos
-
-- Unidades: `GET /caves/:caveId/units`, já usado pelo serviço de academias.
-- Professores: `GET /teachers` com `caveId`, paginação e busca; o seletor
-  carrega todas as páginas do catálogo da caverna.
-- Criação de professor: `POST /teachers` recebe `name`, `email`, `password`
-  e, somente quando houver unidades específicas, `caveUnitIds` como array de
-  `{ caveUnitId, caveName }`.
-- Criação de horário: `POST /training/schedules` recebe os campos existentes,
-  `teacherId` obrigatório e `caveUnitId` somente quando uma unidade for
-  selecionada.
-- O backend deve inferir a caverna do contexto autenticado e interpretar a
-  omissão de `caveUnitIds`/`caveUnitId` como vínculo à caverna inteira, incluindo
-  unidades futuras. Esta aplicação contém somente o desktop; essa adaptação e
-  sua validação permanecem dependência do backend.
+- `GET /teachers` paginado `{ data, _meta, _links }`; item
+  `{ id, userId, name, email, caveUnits: [{ id, name, caveId, caveName }] }`.
+- `GET /teachers/:id` — mesmo item; fonte das unidades do professor.
+- `POST /teachers { name, email, password, caveUnitIds? }`.
+- `PATCH /teachers/:id { name?, email? }` (o desktop não usa `caveUnitIds`).
+- `POST /memberships/teachers/cave-units { teacherId, caveUnitId }` e
+  `DELETE /memberships/teachers/cave-units/:teacherId/:caveUnitId`.
+- Unidades: plataforma `GET /platform/caves` (com `units`), caverna
+  `GET /caves/:caveId/units`.
 
 ## Estados de interface
 
-- Carregando, vazio, sucesso, erro com repetição e validação.
-- Sem unidades: informar que o escopo será a caverna e permitir criar sem
-  `caveUnitIds`/`caveUnitId`.
-- Sem professores: informar que é necessário cadastrar um professor antes do
-  horário e impedir o envio.
-- Erros de mutação preservam valores e usam as mensagens seguras já adotadas.
-
-## Critérios de aceite
-
-- [ ] Nenhum UUID precisa ser digitado para criar professor ou horário.
-- [ ] Selecionar unidades envia seus IDs e o nome da caverna no formato
-      confirmado.
-- [ ] Desmarcar “Adicionar a unidade” omite `caveUnitIds`.
-- [ ] Sem unidades, o formulário permite criação em escopo de caverna sem
-      enviar UUID de unidade.
-- [ ] O formulário de horário mostra nomes, exige professor e permite unidade
-      vazia.
-- [ ] Falhas ao consultar unidades/professores são visíveis e não simulam lista
-      vazia.
+Carregando, vazio, erro com repetição e validação inline; erros do backend
+(403/409) são exibidos com a mensagem retornada.
 
 ## Testes
 
-- Testes de formulário verificam seleção, validação, payloads com/sem unidade,
-  e estados de carregamento/erro/vazio.
-- Testes de serviço verificam o novo DTO de criação de professor.
-- Executar lint, typecheck, testes e build.
-
-## Dependências e decisões
-
-- Confirmado pelo responsável: campo `caveUnitIds` é um array de
-  `{ caveUnitId, caveName }`.
-- Confirmado pelo responsável: professor é obrigatório no horário.
-- Confirmado pelo responsável: seletores mostram apenas unidades da caverna
-  ativa; o backend identifica a caverna pelo contexto autenticado.
-- Backend ainda precisa aceitar os novos objetos e tratar omissão de IDs como
-  escopo de caverna, incluindo unidades futuras.
+- Criação exige unidade para gestor de caverna e não exige na plataforma.
+- Serviço lê `caveUnits` de `GET /teachers/:id` e usa os endpoints de vínculo.

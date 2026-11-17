@@ -3,7 +3,7 @@ import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
-import { useCaveUnits } from '@/features/academies'
+import { useScopeUnits } from '@/features/management/hooks/use-scope-units'
 import { routes } from '@/app/router/routes'
 import { useTeacherOptions } from '@/features/teachers/hooks/use-teachers'
 import {
@@ -11,6 +11,7 @@ import {
   SCHEDULE_SCOPES,
   dateFromSchedule,
   scheduleFormSchema,
+  scheduleTeacherName,
   timeFromSchedule,
   type ClassSchedule,
   type CreateScheduleInput,
@@ -49,10 +50,13 @@ function sixMonthsFromTodayIso(): string {
   return date.toISOString().slice(0, 10)
 }
 
-function defaultValues(schedule?: ClassSchedule): ScheduleFormValues {
+function defaultValues(
+  schedule: ClassSchedule | undefined,
+  ownTeacherId: string,
+): ScheduleFormValues {
   return {
     caveUnitId: schedule?.caveUnitId ?? '',
-    teacherId: schedule?.teacherId ?? '',
+    teacherId: schedule?.teacherId ?? ownTeacherId,
     title: schedule?.title ?? '',
     dayOfWeek: schedule?.dayOfWeek ?? 1,
     startsAt: schedule ? timeFromSchedule(schedule.startsAt) : '19:00',
@@ -79,12 +83,20 @@ export function ScheduleForm({
   onCancel,
 }: ScheduleFormProps) {
   const editing = Boolean(schedule)
-  const { selectedContext } = useSession()
-  const caveId = selectedContext?.caveId ?? ''
-  const unitsQuery = useCaveUnits(editing ? '' : caveId)
-  const teachersQuery = useTeacherOptions(caveId, !editing && Boolean(caveId))
-  const units = unitsQuery.data ?? []
-  const teachers = teachersQuery.data ?? []
+  const { selectedContext, session } = useSession()
+  // A teacher only schedules for itself, in its own linked units.
+  const isTeacher = selectedContext?.role === 'teacher'
+  const ownTeacherId = isTeacher ? (session?.teacherId ?? '') : ''
+  const caveId =
+    selectedContext?.role === 'academy' ? (selectedContext.caveId ?? '') : ''
+  const hasScope = isTeacher ? Boolean(ownTeacherId) : Boolean(caveId)
+  const unitsQuery = useScopeUnits()
+  const teachersQuery = useTeacherOptions(
+    caveId,
+    !editing && !isTeacher && Boolean(caveId),
+  )
+  const units = unitsQuery.units
+  const teachers = isTeacher ? [] : (teachersQuery.data ?? [])
   const mutations = useScheduleMutations()
   const [serverError, setServerError] = useState<string | null>(null)
   const {
@@ -93,20 +105,21 @@ export function ScheduleForm({
     formState: { errors, isSubmitting },
   } = useForm<ScheduleFormValues, unknown, ScheduleFormOutput>({
     resolver: zodResolver(scheduleFormSchema),
-    defaultValues: defaultValues(schedule),
+    defaultValues: defaultValues(schedule, ownTeacherId),
   })
 
+  const teachersPending = !isTeacher && teachersQuery.isPending
+  const teachersError = !isTeacher && teachersQuery.isError
   const catalogsPending =
-    !editing && (!caveId || unitsQuery.isPending || teachersQuery.isPending)
-  const catalogsError =
-    !editing && (unitsQuery.isError || teachersQuery.isError)
+    !editing && (!hasScope || unitsQuery.isPending || teachersPending)
+  const catalogsError = !editing && (unitsQuery.isError || teachersError)
   const pending =
     isSubmitting ||
     mutations.create.isPending ||
     mutations.update.isPending ||
     catalogsPending ||
     catalogsError ||
-    (!editing && teachers.length === 0)
+    (!editing && !isTeacher && teachers.length === 0)
 
   async function submit(values: ScheduleFormOutput) {
     setServerError(null)
@@ -193,7 +206,7 @@ export function ScheduleForm({
           <div className="space-y-2">
             <p className="text-sm font-medium">Professor</p>
             <p className="text-sm text-muted-foreground">
-              {schedule?.teacher?.name ?? 'Professor vinculado'}
+              {schedule ? scheduleTeacherName(schedule) : null}
             </p>
           </div>
           <p className="text-xs text-muted-foreground sm:col-span-2">
@@ -203,17 +216,18 @@ export function ScheduleForm({
         </div>
       ) : (
         <>
-          {!caveId && (
+          {!hasScope && (
             <p role="alert" className="text-sm text-destructive">
-              Selecione um contexto de caverna para criar um horário.
+              Selecione um contexto de caverna ou de professor para criar um
+              horário.
             </p>
           )}
-          {caveId && catalogsPending && (
+          {hasScope && catalogsPending && (
             <p role="status" className="text-sm text-muted-foreground">
               Carregando unidades e professores…
             </p>
           )}
-          {caveId && unitsQuery.isError && (
+          {hasScope && unitsQuery.isError && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-destructive">
               <span>Não foi possível carregar as unidades.</span>
               <Button
@@ -226,7 +240,7 @@ export function ScheduleForm({
               </Button>
             </div>
           )}
-          {caveId && teachersQuery.isError && (
+          {hasScope && teachersError && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-destructive">
               <span>Não foi possível carregar os professores.</span>
               <Button
@@ -247,7 +261,9 @@ export function ScheduleForm({
               <select
                 id="schedule-unit"
                 className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                disabled={!caveId || unitsQuery.isPending || unitsQuery.isError}
+                disabled={
+                  !hasScope || unitsQuery.isPending || unitsQuery.isError
+                }
                 aria-invalid={!!errors.caveUnitId}
                 {...register('caveUnitId')}
               >
@@ -255,6 +271,7 @@ export function ScheduleForm({
                 {units.map((unit) => (
                   <option key={unit.id} value={unit.id}>
                     {unit.name}
+                    {isTeacher && unit.caveName ? ` · ${unit.caveName}` : ''}
                   </option>
                 ))}
               </select>
@@ -267,69 +284,85 @@ export function ScheduleForm({
                   {errors.caveUnitId.message}
                 </p>
               )}
-              {units.length === 0 && !unitsQuery.isPending && !unitsQuery.isError && (
-                <p className="text-sm text-muted-foreground">
-                  Cadastre uma unidade antes de criar o horário.
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="schedule-teacher" className="text-sm font-medium">
-                Professor
-              </label>
-              <select
-                id="schedule-teacher"
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                disabled={
-                  !caveId ||
-                  teachersQuery.isPending ||
-                  teachersQuery.isError ||
-                  teachers.length === 0
-                }
-                aria-invalid={!!errors.teacherId}
-                aria-describedby={
-                  errors.teacherId ? 'schedule-teacher-error' : undefined
-                }
-                {...register('teacherId')}
-              >
-                <option value="">
-                  {teachers.length === 0
-                    ? 'Nenhum professor disponível'
-                    : 'Selecione um professor'}
-                </option>
-                {teachers.map((teacher) => (
-                  <option key={teacher.id} value={teacher.id}>
-                    {teacher.name}
-                    {teacher.email ? ` · ${teacher.email}` : ''}
-                  </option>
-                ))}
-              </select>
-              {errors.teacherId && (
-                <p
-                  id="schedule-teacher-error"
-                  role="alert"
-                  className="text-sm text-destructive"
-                >
-                  {errors.teacherId.message}
-                </p>
-              )}
-              {caveId &&
-                !teachersQuery.isPending &&
-                !teachersQuery.isError &&
-                teachers.length === 0 && (
+              {units.length === 0 &&
+                !unitsQuery.isPending &&
+                !unitsQuery.isError && (
                   <p className="text-sm text-muted-foreground">
-                    Cadastre e vincule um professor a uma unidade desta caverna
-                    antes de criar o horário.{' '}
-                    <Link
-                      className="font-medium text-primary underline-offset-4 hover:underline"
-                      to={routes.teachers}
-                    >
-                      Gerenciar professores
-                    </Link>
-                    .
+                    {isTeacher
+                      ? 'Você ainda não está vinculado a nenhuma unidade.'
+                      : 'Cadastre uma unidade antes de criar o horário.'}
                   </p>
                 )}
             </div>
+            {isTeacher ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Professor</p>
+                <p className="text-sm text-muted-foreground">
+                  {session?.user.name ?? 'Você'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label
+                  htmlFor="schedule-teacher"
+                  className="text-sm font-medium"
+                >
+                  Professor
+                </label>
+                <select
+                  id="schedule-teacher"
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  disabled={
+                    !hasScope ||
+                    teachersQuery.isPending ||
+                    teachersQuery.isError ||
+                    teachers.length === 0
+                  }
+                  aria-invalid={!!errors.teacherId}
+                  aria-describedby={
+                    errors.teacherId ? 'schedule-teacher-error' : undefined
+                  }
+                  {...register('teacherId')}
+                >
+                  <option value="">
+                    {teachers.length === 0
+                      ? 'Nenhum professor disponível'
+                      : 'Selecione um professor'}
+                  </option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name}
+                      {teacher.email ? ` · ${teacher.email}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {errors.teacherId && (
+                  <p
+                    id="schedule-teacher-error"
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
+                    {errors.teacherId.message}
+                  </p>
+                )}
+                {hasScope &&
+                  !teachersQuery.isPending &&
+                  !teachersQuery.isError &&
+                  teachers.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Cadastre e vincule um professor a uma unidade desta
+                      caverna antes de criar o horário.{' '}
+                      <Link
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                        to={routes.teachers}
+                      >
+                        Gerenciar professores
+                      </Link>
+                      .
+                    </p>
+                  )}
+              </div>
+            )}
           </div>
         </>
       )}

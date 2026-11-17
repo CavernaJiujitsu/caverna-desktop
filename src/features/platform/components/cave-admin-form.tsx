@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LoaderCircle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useCaveAdminMutations } from '@/features/platform/hooks/use-platform-caves'
 import { usePlatformUsers } from '@/features/platform/hooks/use-platform-users'
@@ -10,23 +10,19 @@ import {
   type CreateCaveAdminInput,
 } from '@/features/platform/schemas/cave.schema'
 import type { PlatformUser } from '@/features/platform/schemas/user.schema'
+import { RoleBadges } from '@/features/platform/components/role-badges'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
+import { useDebouncedValue } from '@/shared/hooks/use-debounced-value'
+import { getErrorMessage } from '@/shared/lib/error-message'
+import { useSession } from '@/shared/session/session'
 import { notify } from '@/shared/lib/notifications'
-import { AppError } from '@/shared/types/app-error'
 
 function messageForAdminError(error: unknown): string {
-  if (error instanceof AppError) return error.message
-  return 'Não foi possível salvar o gestor. Tente novamente.'
-}
-
-function useDebounce(value: string, delay: number): string {
-  const [debouncedValue, setDebouncedValue] = useState(value)
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay)
-    return () => clearTimeout(handler)
-  }, [value, delay])
-  return debouncedValue
+  return getErrorMessage(
+    error,
+    'Não foi possível salvar o gestor. Tente novamente.',
+  )
 }
 
 export function CaveAdminForm({
@@ -51,17 +47,24 @@ export function CaveAdminForm({
     defaultValues: { name: '', email: '', password: '', userId: undefined },
   })
 
-  const debouncedSearch = useDebounce(searchInput, 300)
+  const debouncedSearch = useDebouncedValue(searchInput.trim(), 300)
 
+  // Any existing account can become a cave admin, so the search is not
+  // restricted by role. A cave admin (academy context) may only list people
+  // linked to its own cave, which the API requires as `caveId`.
+  const { selectedContext } = useSession()
+  const scopeToCave = selectedContext?.role === 'academy'
   const users = usePlatformUsers(
     {
       page: 1,
       limit: 10,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
-      role: 'CAVE_ADMIN',
-      caveId,
+      ...(scopeToCave ? { caveId } : {}),
     },
-    { enabled: mode === 'existing' && debouncedSearch.length > 0 && Boolean(caveId) }
+    {
+      enabled:
+        mode === 'existing' && debouncedSearch.length > 0 && Boolean(caveId),
+    },
   )
 
   async function submit(input: CreateCaveAdminInput) {
@@ -185,7 +188,7 @@ export function CaveAdminForm({
           aria-labelledby="existing-account-tab"
         >
           <label className="grid gap-2 text-sm font-medium">
-            Buscar gestor por nome ou e-mail
+            Buscar conta por nome ou e-mail
             <Input
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
@@ -202,7 +205,12 @@ export function CaveAdminForm({
                   {selectedUser.email}
                 </p>
               </div>
-              <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearSelection}
+              >
                 Remover seleção
               </Button>
             </div>
@@ -216,10 +224,10 @@ export function CaveAdminForm({
                 </div>
               ) : results.length === 0 ? (
                 <div className="p-4 text-center text-xs text-muted-foreground">
-                  Nenhum gestor encontrado
+                  Nenhuma conta encontrada
                 </div>
               ) : (
-                <ul role="listbox" aria-label="Gestores encontrados">
+                <ul role="listbox" aria-label="Contas encontradas">
                   {results.map((user) => (
                     <li
                       key={user.id}
@@ -230,6 +238,9 @@ export function CaveAdminForm({
                       <div className="font-medium">{user.name}</div>
                       <div className="text-xs text-muted-foreground">
                         {user.email}
+                      </div>
+                      <div className="mt-1">
+                        <RoleBadges roles={user.roles} />
                       </div>
                     </li>
                   ))}

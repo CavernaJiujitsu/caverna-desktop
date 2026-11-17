@@ -24,6 +24,7 @@ const context = {
   role: 'academy' as const,
   label: 'Academia A',
   detail: 'Todas as unidades',
+  caveId: '660e8400-e29b-41d4-a716-446655440001',
 }
 
 function writeRaw(value: unknown) {
@@ -40,6 +41,12 @@ describe('session storage', () => {
     writeStoredSession({ session, selectedContext: context })
 
     expect(readStoredSession()).toEqual({ session, selectedContext: context })
+  })
+
+  it('keeps the cave scope of an academy context after a reload', () => {
+    writeStoredSession({ session, selectedContext: context })
+
+    expect(readStoredSession()?.selectedContext?.caveId).toBe(context.caveId)
   })
 
   it('accepts a null selected context', () => {

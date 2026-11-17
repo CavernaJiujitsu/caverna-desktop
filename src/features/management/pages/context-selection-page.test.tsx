@@ -110,7 +110,7 @@ describe('ContextSelectionPage', () => {
     render(
       <Routes>
         <Route path="/management" element={<ContextSelectionPage />} />
-        <Route path="/schedules" element={<p>Schedules route</p>} />
+        <Route path="/classes" element={<p>Classes route</p>} />
       </Routes>,
       { wrapper },
     )
@@ -125,7 +125,7 @@ describe('ContextSelectionPage', () => {
       })
     })
     await vi.waitFor(() => {
-      expect(screen.getByText('Schedules route')).toBeInTheDocument()
+      expect(screen.getByText('Classes route')).toBeInTheDocument()
     })
   })
 
@@ -137,7 +137,7 @@ describe('ContextSelectionPage', () => {
     render(
       <Routes>
         <Route path="/management" element={<ContextSelectionPage />} />
-        <Route path="/schedules" element={<p>Schedules route</p>} />
+        <Route path="/classes" element={<p>Classes route</p>} />
       </Routes>,
       { wrapper },
     )
@@ -149,7 +149,7 @@ describe('ContextSelectionPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Esse acesso não está mais disponível. Atualize os contextos e escolha novamente.',
     )
-    expect(screen.queryByText('Schedules route')).not.toBeInTheDocument()
+    expect(screen.queryByText('Classes route')).not.toBeInTheDocument()
     expect(screen.getByText('Como você quer entrar?')).toBeInTheDocument()
   })
 

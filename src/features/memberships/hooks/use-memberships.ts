@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { membershipService } from '@/features/memberships/services/membership.service'
+import { practitionerKeys } from '@/features/practitioners/hooks/use-practitioners'
 
 export const membershipKeys = {
   all: ['memberships', 'students'] as const,
@@ -17,8 +18,14 @@ export function useStudentMemberships(caveUnitId: string) {
 
 export function useStudentMembershipMutations() {
   const queryClient = useQueryClient()
+  // Reloads on settle, not only on success: a 404/409 means the cached roster
+  // is stale, and the API is the only source of which links are active.
+  // Student lists show each student's units, so they reload as well.
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: membershipKeys.all })
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: membershipKeys.all }),
+      queryClient.invalidateQueries({ queryKey: practitionerKeys.all }),
+    ])
   return {
     link: useMutation({
       mutationFn: ({
@@ -28,7 +35,7 @@ export function useStudentMembershipMutations() {
         practitionerId: string
         caveUnitId: string
       }) => membershipService.linkStudent(practitionerId, caveUnitId),
-      onSuccess: invalidate,
+      onSettled: invalidate,
     }),
     unlink: useMutation({
       mutationFn: ({
@@ -38,7 +45,7 @@ export function useStudentMembershipMutations() {
         practitionerId: string
         caveUnitId: string
       }) => membershipService.unlinkStudent(practitionerId, caveUnitId),
-      onSuccess: invalidate,
+      onSettled: invalidate,
     }),
   }
 }

@@ -5,10 +5,10 @@ export function ErrorPage() {
   useRouteError() // Do not expose route exception details to end users.
   return (
     <PageContainer>
-      <h1 className="text-2xl font-semibold">Something went wrong</h1>
-      <p className="mt-2">Please reload the page or return home.</p>
+      <h1 className="text-2xl font-semibold">Algo deu errado</h1>
+      <p className="mt-2">Recarregue a página ou volte ao início.</p>
       <Link className="mt-4 inline-block underline" to="/">
-        Return home
+        Voltar ao início
       </Link>
     </PageContainer>
   )

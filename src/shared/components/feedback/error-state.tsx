@@ -3,7 +3,7 @@ import { Button } from '@/shared/components/ui/button'
 export function ErrorState({
   message,
   onRetry,
-  retryLabel = 'Try again',
+  retryLabel = 'Tentar novamente',
 }: {
   message: string
   onRetry?: () => void

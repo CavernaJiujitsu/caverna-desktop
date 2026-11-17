@@ -12,27 +12,15 @@ import { PageHeader } from '@/shared/components/layout/page-header'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { useSession } from '@/shared/session/session'
-import { AppError } from '@/shared/types/app-error'
-import type { ManagementContext } from '@/shared/types/management-context'
-
-function caveIdFromContext(
-  context: ManagementContext | null,
-): string | undefined {
-  if (context?.role !== 'academy') return undefined
-  const [scope, caveId] = context.id.split(':')
-  return scope === 'academy' && caveId ? caveId : undefined
-}
-
-function messageForError(error: unknown, fallback: string) {
-  return error instanceof AppError ? error.message : fallback
-}
+import { getErrorMessage } from '@/shared/lib/error-message'
 
 export default function TeachersPage() {
   const { selectedContext } = useSession()
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const caveId = caveIdFromContext(selectedContext)
+  const caveId =
+    selectedContext?.role === 'academy' ? selectedContext.caveId : undefined
   const teachers = useTeachers({
     page,
     limit: 20,
@@ -80,13 +68,15 @@ export default function TeachersPage() {
               Buscar
             </Button>
           </form>
-          <h2 id="teachers-list-title" className="mt-6 text-lg font-semibold">Professores cadastrados</h2>
+          <h2 id="teachers-list-title" className="mt-6 text-lg font-semibold">
+            Professores cadastrados
+          </h2>
           <div className="mt-3">
             {teachers.isPending ? (
               <LoadingState label="Carregando professores…" />
             ) : teachers.isError ? (
               <ErrorState
-                message={messageForError(
+                message={getErrorMessage(
                   teachers.error,
                   'Não foi possível carregar os professores.',
                 )}
@@ -99,15 +89,47 @@ export default function TeachersPage() {
               />
             ) : (
               <>
-                <div className="overflow-x-auto rounded-xl border border-border bg-card"><table className="w-full min-w-[560px] text-left text-sm" aria-label="Professores"><thead className="bg-accent text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Professor</th><th className="px-4 py-3 font-medium">E-mail</th><th className="px-4 py-3 font-medium">Ação</th></tr></thead><tbody className="divide-y divide-border">
-                  {items.map((teacher) => (
-                    <tr key={teacher.id}><td className="px-4 py-3 font-medium">{teacher.name}</td><td className="px-4 py-3 text-muted-foreground">{teacher.email ?? 'E-mail não informado'}</td><td className="px-4 py-3"><Button asChild size="sm" variant="link">
-                        <Link to={`${routes.teachers}/${teacher.id}`}>
-                          Ver professor
-                        </Link>
-                      </Button></td></tr>
-                  ))}
-                </tbody></table></div>
+                <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                  <table
+                    className="w-full min-w-[560px] text-left text-sm"
+                    aria-label="Professores"
+                  >
+                    <thead className="bg-accent text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3 font-medium">Professor</th>
+                        <th className="px-4 py-3 font-medium">E-mail</th>
+                        <th className="px-4 py-3 font-medium">Unidades</th>
+                        <th className="px-4 py-3 font-medium">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {items.map((teacher) => (
+                        <tr key={teacher.id}>
+                          <td className="px-4 py-3 font-medium">
+                            {teacher.name}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {teacher.email ?? 'E-mail não informado'}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {teacher.caveUnits.length
+                              ? teacher.caveUnits
+                                  .map((unit) => unit.name)
+                                  .join(', ')
+                              : 'Sem unidade'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Button asChild size="sm" variant="link">
+                              <Link to={`${routes.teachers}/${teacher.id}`}>
+                                Ver professor
+                              </Link>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
                 <nav
                   className="mt-4 flex items-center justify-between gap-3"
                   aria-label="Paginação de professores"
@@ -140,7 +162,11 @@ export default function TeachersPage() {
             )}
           </div>
         </section>
-        <TeacherCreateForm />
+        {/* self-start: grid items stretch to the row height by default, which
+            made the form as tall as the table. Sticky keeps it in view. */}
+        <aside className="self-start xl:sticky xl:top-6">
+          <TeacherCreateForm />
+        </aside>
       </div>
     </ManagementShell>
   )

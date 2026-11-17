@@ -1,55 +1,32 @@
 import { z } from 'zod'
-import { http } from '@/shared/lib/axios'
-import { AppError } from '@/shared/types/app-error'
+import { envelopeSchema, paginatedSchema } from '@/shared/lib/api-schema'
+import { http, normalizeHttpError } from '@/shared/lib/axios'
 
 const beltSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  color: z.string(),
-  level: z.number().int().positive(),
+  color: z.string().optional(),
+  level: z.number().int(),
 })
 
 export type Belt = z.infer<typeof beltSchema>
 
-const listResponseSchema = z.object({
-  data: z.object({
-    data: z.array(beltSchema),
-    _meta: z.object({
-      page: z.number(),
-      limit: z.number(),
-      total: z.number(),
-    }),
-  }),
-})
-
-const itemResponseSchema = z.object({
-  data: beltSchema,
-})
-
-const ENDPOINTS = {
-  list: '/belts',
-  item: (id: string) => `/belts/${id}`,
-} as const
+const listResponseSchema = envelopeSchema(paginatedSchema(beltSchema))
 
 export const beltService = {
+  /** Belts are a small public catalog; one page holds all of them. */
   async list(signal?: AbortSignal): Promise<Belt[]> {
     try {
-      const response = await http.get(ENDPOINTS.list, {
+      const { data } = await http.get<unknown>('/belts', {
         params: { page: 1, limit: 100 },
         signal,
       })
-      return listResponseSchema.parse(response.data).data.data
-    } catch {
-      throw new AppError('unknown', 'Falha ao listar faixas.')
-    }
-  },
-
-  async findOne(id: string, signal?: AbortSignal): Promise<Belt> {
-    try {
-      const response = await http.get(ENDPOINTS.item(id), { signal })
-      return itemResponseSchema.parse(response.data).data
-    } catch {
-      throw new AppError('not-found', 'Faixa não encontrada.')
+      return listResponseSchema
+        .parse(data)
+        .data.data.slice()
+        .sort((a, b) => a.level - b.level)
+    } catch (error) {
+      throw normalizeHttpError(error)
     }
   },
 }

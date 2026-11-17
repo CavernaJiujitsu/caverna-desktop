@@ -1,9 +1,7 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { LoaderCircle, Trash2, Users } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { Trash2, UserPlus, Users } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { routes } from '@/app/router/routes'
+import { canOpenRoute, routes } from '@/app/router/routes'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import { useAllManagedCaveUnits } from '@/features/academies/hooks/use-academies'
 import { usePlatformCaves } from '@/features/platform/hooks/use-platform-caves'
@@ -11,82 +9,163 @@ import {
   useStudentMembershipMutations,
   useStudentMemberships,
 } from '@/features/memberships/hooks/use-memberships'
-import {
-  studentLinkFormSchema,
-  type StudentLinkFormValues,
-} from '@/features/memberships/schemas/membership.schema'
+import { PractitionerPicker } from '@/features/practitioners/components/practitioner-picker'
+import { usePractitionerList } from '@/features/practitioners/hooks/use-practitioners'
+import type { Practitioner } from '@/features/practitioners/schemas/practitioner.schema'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
 import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { PageHeader } from '@/shared/components/layout/page-header'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
+import { useDebouncedValue } from '@/shared/hooks/use-debounced-value'
 import { notify } from '@/shared/lib/notifications'
 import { useSession } from '@/shared/session/session'
-import type { ManagementContext } from '@/shared/types/management-context'
-import { AppError } from '@/shared/types/app-error'
+import { getErrorMessage } from '@/shared/lib/error-message'
 
-function messageForError(error: unknown, fallback: string) {
-  return error instanceof AppError ? error.message : fallback
-}
+function AllStudentsList({ caveId }: { caveId?: string }) {
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const debouncedSearch = useDebouncedValue(search.trim())
+  const students = usePractitionerList({
+    page,
+    search: debouncedSearch || undefined,
+    caveId,
+  })
 
-function caveIdFromContext(context: ManagementContext | null) {
-  if (context?.role !== 'academy') return ''
-  if (context.caveId) return context.caveId
-  const [scope, caveId] = context.id.split(':')
-  return scope === 'academy' ? (caveId ?? '') : ''
+  return (
+    <section className="grid gap-3" aria-label="Todos os alunos">
+      <Input
+        type="search"
+        placeholder="Buscar por nome ou e-mail"
+        aria-label="Buscar aluno"
+        maxLength={100}
+        value={search}
+        onChange={(event) => {
+          setSearch(event.target.value)
+          setPage(1)
+        }}
+        className="max-w-xl"
+      />
+      {students.isPending ? (
+        <LoadingState label="Carregando alunos…" />
+      ) : students.isError ? (
+        <ErrorState
+          message={getErrorMessage(
+            students.error,
+            'Não foi possível carregar os alunos.',
+          )}
+          onRetry={() => void students.refetch()}
+        />
+      ) : students.data.items.length === 0 ? (
+        <EmptyState
+          title="Nenhum aluno encontrado"
+          description={
+            debouncedSearch
+              ? 'Nenhum aluno corresponde à busca.'
+              : 'Ainda não há alunos neste escopo.'
+          }
+        />
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">
+            {students.data.total} aluno(s)
+          </p>
+          <ul
+            className="divide-y divide-border rounded-xl border border-border bg-card"
+            aria-label="Lista de alunos"
+          >
+            {students.data.items.map((student) => (
+              <li
+                key={student.id}
+                className="grid gap-2 p-4 text-sm md:grid-cols-[minmax(0,1fr)_8rem_minmax(0,1.5fr)] md:items-center"
+              >
+                <div>
+                  <p className="font-medium">{student.user.name}</p>
+                  <p className="text-muted-foreground">{student.user.email}</p>
+                </div>
+                <span>{student.currentBelt?.name ?? 'Sem faixa'}</span>
+                <span className="text-muted-foreground">
+                  {student.units.length
+                    ? student.units
+                        .map((unit) =>
+                          caveId || !unit.caveName
+                            ? unit.name
+                            : `${unit.caveName} · ${unit.name}`,
+                        )
+                        .join(', ')
+                    : 'Sem unidade'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {students.data.totalPages > 1 ? (
+            <nav
+              className="flex items-center justify-end gap-3 text-sm"
+              aria-label="Paginação de alunos"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => setPage((value) => value - 1)}
+              >
+                Anterior
+              </Button>
+              <span>
+                Página {students.data.page} de {students.data.totalPages}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={page >= students.data.totalPages}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                Próxima
+              </Button>
+            </nav>
+          ) : null}
+        </>
+      )}
+    </section>
+  )
 }
 
 function StudentLinkForm({ caveUnitId }: { caveUnitId: string }) {
   const mutations = useStudentMembershipMutations()
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<StudentLinkFormValues>({
-    resolver: zodResolver(studentLinkFormSchema),
-    defaultValues: { practitionerId: '' },
-  })
-  async function submit(values: StudentLinkFormValues) {
+  async function link(practitioner: Practitioner) {
     try {
-      await mutations.link.mutateAsync({ ...values, caveUnitId })
-      reset()
-      notify.success('Aluno vinculado à unidade.')
+      await mutations.link.mutateAsync({
+        practitionerId: practitioner.id,
+        caveUnitId,
+      })
+      notify.success(`${practitioner.user.name} vinculado à unidade.`)
     } catch (error) {
-      notify.error(messageForError(error, 'Não foi possível vincular o aluno.'))
+      notify.error(getErrorMessage(error, 'Não foi possível vincular o aluno.'))
     }
   }
   return (
-    <form
-      className="grid gap-3 rounded-xl border border-border bg-card p-5"
-      onSubmit={(event) => void handleSubmit(submit)(event)}
-      noValidate
-    >
+    <section className="grid gap-3 rounded-xl border border-border bg-card p-5">
       <h2 className="text-lg font-semibold">Vincular aluno</h2>
-      <label className="grid gap-2 text-sm font-medium">
-        UUID do praticante
-        <Input
-          aria-invalid={Boolean(errors.practitionerId)}
-          {...register('practitionerId')}
-        />
-        {errors.practitionerId && (
-          <span className="text-destructive">
-            {errors.practitionerId.message}
-          </span>
-        )}
-      </label>
-      <Button type="submit" disabled={isSubmitting || mutations.link.isPending}>
-        {isSubmitting || mutations.link.isPending ? (
-          <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-        ) : null}
-        Vincular aluno
-      </Button>
-    </form>
+      <PractitionerPicker
+        actionLabel="Vincular"
+        disabled={mutations.link.isPending}
+        onSelect={(practitioner) => void link(practitioner)}
+      />
+    </section>
   )
 }
 
-function StudentList({ caveUnitId }: { caveUnitId: string }) {
+function StudentList({
+  caveUnitId,
+  canValidateBelt,
+}: {
+  caveUnitId: string
+  /** Only contexts that may open the evaluations page get the shortcut. */
+  canValidateBelt: boolean
+}) {
   const students = useStudentMemberships(caveUnitId)
   const mutations = useStudentMembershipMutations()
   async function unlink(practitionerId: string, name: string) {
@@ -96,7 +175,7 @@ function StudentList({ caveUnitId }: { caveUnitId: string }) {
       notify.success('Aluno desvinculado da unidade.')
     } catch (error) {
       notify.error(
-        messageForError(error, 'Não foi possível desvincular o aluno.'),
+        getErrorMessage(error, 'Não foi possível desvincular o aluno.'),
       )
     }
   }
@@ -104,7 +183,7 @@ function StudentList({ caveUnitId }: { caveUnitId: string }) {
   if (students.isError)
     return (
       <ErrorState
-        message={messageForError(
+        message={getErrorMessage(
           students.error,
           'Não foi possível carregar os alunos.',
         )}
@@ -149,9 +228,11 @@ function StudentList({ caveUnitId }: { caveUnitId: string }) {
             <Trash2 className="size-4" aria-hidden="true" />
             Desvincular
           </Button>
-          <Button asChild type="button" size="sm" variant="outline">
-            <Link to={routes.evaluations}>Validar faixa</Link>
-          </Button>
+          {canValidateBelt ? (
+            <Button asChild type="button" size="sm" variant="outline">
+              <Link to={routes.evaluations}>Validar faixa</Link>
+            </Button>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -165,13 +246,12 @@ export default function MembershipsPage() {
   const [selectedCaveId, setSelectedCaveId] = useState('')
   const [selectedUnitId, setSelectedUnitId] = useState('')
 
+  // Platform starts with every cave ('' = no filter); cave admins are pinned.
   const caveId = isPlatformContext
-    ? caves.isSuccess
-      ? (caves.data.find((cave) => cave.id === selectedCaveId)?.id ??
-        caves.data[0]?.id ??
-        '')
+    ? (caves.data?.find((cave) => cave.id === selectedCaveId)?.id ?? '')
+    : selectedContext?.role === 'academy'
+      ? (selectedContext.caveId ?? '')
       : ''
-    : caveIdFromContext(selectedContext)
   const units = useAllManagedCaveUnits(caveId)
   const activeUnits = units.data?.filter((unit) => unit.active) ?? []
   const selectedUnit = activeUnits.find((unit) => unit.id === selectedUnitId)
@@ -186,7 +266,7 @@ export default function MembershipsPage() {
     <ManagementShell>
       <PageHeader
         title="Alunos"
-        description="Consulte matrículas por unidade. A aprovação da validação de faixa libera a trilha automaticamente."
+        description="Todos os alunos do seu escopo. Filtre por caverna ou escolha uma unidade para gerenciar as matrículas dela."
       />
 
       {isPlatformContext ? (
@@ -194,7 +274,7 @@ export default function MembershipsPage() {
           <LoadingState label="Carregando cavernas…" />
         ) : caves.isError ? (
           <ErrorState
-            message={messageForError(
+            message={getErrorMessage(
               caves.error,
               'Não foi possível carregar as cavernas disponíveis.',
             )}
@@ -213,6 +293,7 @@ export default function MembershipsPage() {
               value={caveId}
               onChange={(event) => changeCave(event.target.value)}
             >
+              <option value="">Todas as cavernas</option>
               {caves.data.map((cave) => (
                 <option key={cave.id} value={cave.id}>
                   {cave.name}
@@ -232,7 +313,7 @@ export default function MembershipsPage() {
               <LoadingState label="Carregando unidades…" />
             ) : units.isError ? (
               <ErrorState
-                message={messageForError(
+                message={getErrorMessage(
                   units.error,
                   'Não foi possível carregar as unidades.',
                 )}
@@ -251,7 +332,7 @@ export default function MembershipsPage() {
                   value={selectedUnitStillAvailable ? selectedUnitId : ''}
                   onChange={(event) => setSelectedUnitId(event.target.value)}
                 >
-                  <option value="">Selecione uma unidade</option>
+                  <option value="">Todas as unidades</option>
                   {activeUnits.map((unit) => (
                     <option key={unit.id} value={unit.id}>
                       {unit.name}
@@ -263,14 +344,6 @@ export default function MembershipsPage() {
             )}
           </section>
 
-          {units.isSuccess && activeUnits.length > 0 && !selectedUnit ? (
-            <div className="mt-4">
-              <EmptyState
-                title="Selecione uma unidade"
-                description="Escolha uma unidade na lista para ver as matrículas."
-              />
-            </div>
-          ) : null}
 
           {selectedUnit && (
             <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -284,13 +357,34 @@ export default function MembershipsPage() {
                       : ''}
                   </span>
                 </div>
-                <StudentList caveUnitId={selectedUnit.id} />
+                <StudentList
+                  caveUnitId={selectedUnit.id}
+                  canValidateBelt={canOpenRoute(
+                    'evaluations',
+                    selectedContext?.role,
+                  )}
+                />
               </div>
-              <StudentLinkForm caveUnitId={selectedUnit.id} />
+              <div className="flex flex-col gap-4">
+                <StudentLinkForm caveUnitId={selectedUnit.id} />
+                <Link
+                  to={routes.practitionersCreate}
+                  className="inline-flex items-center gap-2"
+                >
+                  <UserPlus className="size-4" aria-hidden="true" />
+                  Cadastrar novo aluno
+                </Link>
+              </div>
             </section>
           )}
         </>
       )}
+
+      {!selectedUnit && (isPlatformContext || caveId) ? (
+        <div className="mt-6">
+          <AllStudentsList key={caveId} caveId={caveId || undefined} />
+        </div>
+      ) : null}
     </ManagementShell>
   )
 }

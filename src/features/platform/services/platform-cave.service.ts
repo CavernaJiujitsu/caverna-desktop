@@ -57,11 +57,9 @@ export const platformCaveService = {
   ): Promise<PlatformCave> {
     try {
       const payload = createPlatformCaveSchema.parse(input)
-      const { data } = await http.post<unknown>(
-        ENDPOINTS.caves,
-        payload,
-        { signal },
-      )
+      const { data } = await http.post<unknown>(ENDPOINTS.caves, payload, {
+        signal,
+      })
       return caveSchema.parse(data).data
     } catch (error) {
       throw normalizeHttpError(error)

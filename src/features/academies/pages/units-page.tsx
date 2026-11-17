@@ -1,8 +1,9 @@
 import { Search, Trash2, RotateCcw, Pencil } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import type { UnitPage } from '@/features/academies/services/academy.service'
+import { routes } from '@/app/router/routes'
 import {
   useAcademies,
   useCaveUnitPage,
@@ -43,6 +44,7 @@ function unitLocation(unit: ManagedUnit) {
 export default function UnitsPage() {
   const { selectedContext } = useSession()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const isPlatformContext = selectedContext?.role === 'platform'
   const caves = useAcademies({ enabled: isPlatformContext })
   const [selectedCaveId, setSelectedCaveId] = useState(
@@ -159,7 +161,7 @@ export default function UnitsPage() {
       ) : null}
 
       {caveId && (
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="space-y-8">
           <section aria-labelledby="units-list-title">
             <form
               className="flex flex-wrap gap-3 rounded-xl border border-border bg-card p-4"
@@ -183,7 +185,9 @@ export default function UnitsPage() {
               </Button>
             </form>
 
-            <h2 id="units-list-title" className="mt-6 text-lg font-semibold">Unidades cadastradas</h2>
+            <h2 id="units-list-title" className="mt-6 text-lg font-semibold">
+              Unidades cadastradas
+            </h2>
             <div className="mt-3">
               {units.isPending ? (
                 <LoadingState label="Carregando unidades…" />
@@ -331,7 +335,7 @@ export default function UnitsPage() {
             <h2 id="create-unit-title" className="mb-3 text-lg font-semibold">
               Cadastrar unidade
             </h2>
-            <UnitForm caveId={caveId} />
+            <UnitForm caveId={caveId} onDone={() => navigate(routes.units)} />
           </section>
         </div>
       )}

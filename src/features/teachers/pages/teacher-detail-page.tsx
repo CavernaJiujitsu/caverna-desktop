@@ -1,51 +1,118 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Trash2 } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import {
-  TeacherUnitLinkForm,
+  cavesOf,
+  useScopeUnits,
+  type ScopeUnit,
+} from '@/features/management/hooks/use-scope-units'
+import {
   TeacherUpdateForm,
+  UnitCheckboxList,
 } from '@/features/teachers/components/teacher-forms'
 import {
   useTeacher,
   useTeacherMutations,
 } from '@/features/teachers/hooks/use-teachers'
+import type { Teacher } from '@/features/teachers/schemas/teacher.schema'
 import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { Button } from '@/shared/components/ui/button'
+import { getErrorMessage } from '@/shared/lib/error-message'
 import { notify } from '@/shared/lib/notifications'
-import { AppError } from '@/shared/types/app-error'
-import { useSession } from '@/shared/session/session'
+
+/**
+ * Lists every unit available in the current scope (all caves on the
+ * platform, the own cave for a cave admin) so a teacher without any link can
+ * still be linked. Each checkbox links/unlinks one unit immediately.
+ */
+function TeacherUnitsSection({ teacher }: { teacher: Teacher }) {
+  const scope = useScopeUnits()
+  const mutations = useTeacherMutations()
+  const linked = new Set(teacher.caveUnits.map((unit) => unit.id))
+  const busy = mutations.linkUnit.isPending || mutations.unlinkUnit.isPending
+
+  async function toggle(unit: ScopeUnit, nextChecked: boolean) {
+    const variables = { teacherId: teacher.id, caveUnitId: unit.id }
+    try {
+      if (nextChecked) {
+        await mutations.linkUnit.mutateAsync(variables)
+        notify.success(`Professor vinculado a ${unit.name}.`)
+      } else {
+        await mutations.unlinkUnit.mutateAsync(variables)
+        notify.success(`Professor desvinculado de ${unit.name}.`)
+      }
+    } catch (error) {
+      notify.error(
+        getErrorMessage(error, 'Não foi possível alterar o vínculo.'),
+      )
+    }
+  }
+
+  return (
+    <section
+      className="grid gap-4 rounded-xl border border-border bg-card p-5"
+      aria-labelledby="teacher-units-title"
+    >
+      <div>
+        <h2 id="teacher-units-title" className="text-lg font-semibold">
+          Unidades vinculadas
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Marque ou desmarque para vincular o professor. Ele só cria aulas e
+          horários nas unidades marcadas.
+        </p>
+      </div>
+      {scope.isPending ? (
+        <LoadingState label="Carregando unidades…" />
+      ) : scope.isError ? (
+        <ErrorState
+          message="Não foi possível carregar as unidades disponíveis."
+          onRetry={() => void scope.refetch()}
+        />
+      ) : (
+        cavesOf(scope.units).map((cave) => (
+          <div key={cave.id} className="grid gap-2">
+            <h3 className="text-sm font-semibold">{cave.name}</h3>
+            <UnitCheckboxList
+              units={scope.units.filter((unit) => unit.caveId === cave.id)}
+              checked={(unitId) => linked.has(unitId)}
+              disabled={busy}
+              onToggle={(unit, nextChecked) => void toggle(unit, nextChecked)}
+            />
+          </div>
+        ))
+      )}
+      {!scope.isPending && !scope.isError && scope.units.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Nenhuma unidade ativa disponível neste contexto.
+        </p>
+      )}
+    </section>
+  )
+}
 
 export default function TeacherDetailPage() {
   const { teacherId = '' } = useParams<{ teacherId: string }>()
   const navigate = useNavigate()
   const teacher = useTeacher(teacherId)
   const mutations = useTeacherMutations()
-  const { selectedContext, session } = useSession()
-  const caveId =
-    selectedContext?.caveId ??
-    session?.caveId ??
-    (selectedContext?.role === 'academy'
-      ? selectedContext.id.replace(/^academy:/, '')
-      : '')
 
   async function removeTeacher() {
     if (
       !window.confirm(
-        'Remover este professor? Esta ação não pode ser desfeita.',
+        'Remover o perfil de professor? A conta é mantida se tiver outros acessos.',
       )
     )
       return
     try {
       await mutations.remove.mutateAsync(teacherId)
-      notify.success('Professor removido.')
+      notify.success('Perfil de professor removido.')
       navigate(routes.teachers)
     } catch (error) {
       notify.error(
-        error instanceof AppError
-          ? error.message
-          : 'Não foi possível remover o professor.',
+        getErrorMessage(error, 'Não foi possível remover o professor.'),
       )
     }
   }
@@ -62,11 +129,10 @@ export default function TeacherDetailPage() {
         <LoadingState label="Carregando professor…" />
       ) : teacher.isError ? (
         <ErrorState
-          message={
-            teacher.error instanceof AppError
-              ? teacher.error.message
-              : 'Não foi possível carregar o professor.'
-          }
+          message={getErrorMessage(
+            teacher.error,
+            'Não foi possível carregar o professor.',
+          )}
           onRetry={() => void teacher.refetch()}
         />
       ) : (
@@ -93,35 +159,9 @@ export default function TeacherDetailPage() {
               Remover professor
             </Button>
           </header>
-          <section
-            className="grid gap-4 rounded-xl border border-border bg-card p-5"
-            aria-labelledby="teacher-data-title"
-          >
-            <h2 id="teacher-data-title" className="text-lg font-semibold">
-              Dados disponíveis
-            </h2>
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-muted-foreground">ID</dt>
-                <dd className="break-all font-medium">{teacher.data.id}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Unidades retornadas</dt>
-                <dd className="font-medium">
-                  {teacher.data.caveUnitIds?.length
-                    ? teacher.data.caveUnitIds.join(', ')
-                    : 'Não informadas pela API'}
-                </dd>
-              </div>
-            </dl>
-          </section>
           <div className="grid gap-6 xl:grid-cols-2">
-            <TeacherUpdateForm
-              teacher={teacher.data}
-              onSaved={() => void teacher.refetch()}
-            />
-            <TeacherUnitLinkForm teacherId={teacher.data.id} caveId={caveId} action="link" />
-            <TeacherUnitLinkForm teacherId={teacher.data.id} caveId={caveId} action="unlink" />
+            <TeacherUpdateForm key={teacher.data.id} teacher={teacher.data} />
+            <TeacherUnitsSection teacher={teacher.data} />
           </div>
         </div>
       )}
