@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createPractitioner } from '../support/api'
-import { ACCOUNTS, signInAs } from '../support/auth'
+import { signInAs } from '../support/auth'
 
 /**
  * Journey 3: the platform context lists every student without a cave filter
