@@ -22,7 +22,4 @@ export const studentMembershipSchema = z
   })
   .passthrough()
 
-export const studentLinkFormSchema = z.object({ practitionerId: uuid })
-
 export type StudentMembership = z.infer<typeof studentMembershipSchema>
-export type StudentLinkFormValues = z.infer<typeof studentLinkFormSchema>

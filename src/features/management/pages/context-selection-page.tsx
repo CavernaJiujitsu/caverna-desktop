@@ -16,7 +16,7 @@ import { notify } from '@/shared/lib/notifications'
 const destinationByRole: Record<ManagementContext['role'], string> = {
   platform: routes.platformCaves,
   academy: routes.classes,
-  teacher: routes.schedules,
+  teacher: routes.classes,
 }
 
 export default function ContextSelectionPage() {

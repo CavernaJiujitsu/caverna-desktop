@@ -47,17 +47,17 @@ describe('teacherService', () => {
       name: teacher.name,
       email: teacher.email,
       password: 'initial-password',
-      caveUnitIds: [{ caveUnitId: unitId, caveName: 'Caverna Matriz' }],
+      caveUnitIds: [unitId],
     })
     expect(http.post).toHaveBeenCalledWith('/teachers', {
       name: teacher.name,
       email: teacher.email,
       password: 'initial-password',
-      caveUnitIds: [{ caveUnitId: unitId, caveName: 'Caverna Matriz' }],
+      caveUnitIds: [unitId],
     })
   })
 
-  it('creates a teacher without unit associations when the cave scope is used', async () => {
+  it('omits empty unit links when creating a platform teacher', async () => {
     vi.mocked(http.post).mockResolvedValueOnce({
       data: { data: teacher },
     } as never)
@@ -66,12 +66,35 @@ describe('teacherService', () => {
       name: teacher.name,
       email: teacher.email,
       password: 'initial-password',
+      caveUnitIds: [],
     })
 
     expect(http.post).toHaveBeenCalledWith('/teachers', {
       name: teacher.name,
       email: teacher.email,
       password: 'initial-password',
+    })
+  })
+
+  it('reads the teacher units from GET /teachers/:id', async () => {
+    vi.mocked(http.get).mockResolvedValueOnce({
+      data: {
+        data: {
+          ...teacher,
+          caveUnits: [
+            { id: unitId, name: 'Centro', caveId, caveName: 'Caverna Matriz' },
+          ],
+        },
+      },
+    } as never)
+
+    const found = await teacherService.findOne(teacherId)
+
+    expect(found.caveUnits).toEqual([
+      { id: unitId, name: 'Centro', caveId, caveName: 'Caverna Matriz' },
+    ])
+    expect(http.get).toHaveBeenCalledWith(`/teachers/${teacherId}`, {
+      signal: undefined,
     })
   })
 

@@ -11,6 +11,7 @@ import type {
 export const teacherKeys = {
   all: ['teachers'] as const,
   list: (query: TeacherListQuery) => ['teachers', 'list', query] as const,
+  options: (caveId?: string) => ['teachers', 'options', caveId] as const,
   item: (id: string) => ['teachers', id] as const,
 }
 
@@ -33,29 +34,20 @@ export function useTeacher(id: string) {
   })
 }
 
-export function useTeacherCaveUnits(teacherId: string) {
-  return useQuery({
-    queryKey: ['teachers', teacherId, 'cave-units'],
-    queryFn: ({ signal }) =>
-      teacherService.listTeacherCaveUnits(teacherId, signal),
-    enabled: Boolean(teacherId),
-    staleTime: 60_000,
-    retry: 1,
-  })
-}
-
+/** Every teacher of a cave (all pages), for selectors. */
 export function useTeacherOptions(caveId?: string, enabled = Boolean(caveId)) {
   return useQuery({
-    queryKey: ['teachers', 'options', caveId] as const,
+    queryKey: teacherKeys.options(caveId),
     queryFn: async ({ signal }) => {
+      const scope = caveId ? { caveId } : {}
       const firstPage = await teacherService.list(
-        { page: 1, limit: 20, ...(caveId ? { caveId } : {}) },
+        { page: 1, limit: 100, ...scope },
         signal,
       )
       const teachers = [...firstPage.items]
       for (let page = 2; page <= firstPage.totalPage; page += 1) {
         const response = await teacherService.list(
-          { page, limit: 20, ...(caveId ? { caveId } : {}) },
+          { page, limit: 100, ...scope },
           signal,
         )
         teachers.push(...response.items)
@@ -70,17 +62,13 @@ export function useTeacherOptions(caveId?: string, enabled = Boolean(caveId)) {
 
 export function useTeacherMutations() {
   const queryClient = useQueryClient()
+  // The item key lives under `teachers`, so this also refreshes the detail.
   const invalidateAll = () =>
     queryClient.invalidateQueries({ queryKey: teacherKeys.all })
 
   return {
     create: useMutation({
       mutationFn: (input: TeacherCreateInput) => teacherService.create(input),
-      onSuccess: invalidateAll,
-    }),
-    linkExisting: useMutation({
-      mutationFn: (input: { userId: string }) =>
-        teacherService.linkExisting(input),
       onSuccess: invalidateAll,
     }),
     update: useMutation({
@@ -91,12 +79,7 @@ export function useTeacherMutations() {
         teacherId: string
         input: TeacherUpdateInput
       }) => teacherService.update(teacherId, input),
-      onSuccess: (_, variables) => {
-        invalidateAll()
-        queryClient.invalidateQueries({
-          queryKey: teacherKeys.item(variables.teacherId),
-        })
-      },
+      onSuccess: invalidateAll,
     }),
     remove: useMutation({
       mutationFn: (teacherId: string) => teacherService.remove(teacherId),

@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import { envelopeSchema, paginatedSchema } from '@/shared/lib/api-schema'
 import { http, normalizeHttpError } from '@/shared/lib/axios'
 import {
@@ -11,12 +10,12 @@ import {
 const ENDPOINTS = {
   list: '/teachers',
   item: (teacherId: string) => `/teachers/${teacherId}`,
-  membership: '/memberships/teachers/cave-units',
-  membershipItem: (teacherId: string, caveUnitId: string) =>
+  unitLink: '/memberships/teachers/cave-units',
+  unitLinkItem: (teacherId: string, caveUnitId: string) =>
     `/memberships/teachers/cave-units/${teacherId}/${caveUnitId}`,
 } as const
 
-const teacherSchemaEnvelope = envelopeSchema(teacherSchema)
+const teacherEnvelope = envelopeSchema(teacherSchema)
 const teacherListSchema = envelopeSchema(paginatedSchema(teacherSchema))
 
 export type TeacherListQuery = {
@@ -33,12 +32,17 @@ export type TeacherPage = {
   total: number
 }
 
+async function call<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request()
+  } catch (error) {
+    throw normalizeHttpError(error)
+  }
+}
+
 export const teacherService = {
-  async list(
-    query: TeacherListQuery,
-    signal?: AbortSignal,
-  ): Promise<TeacherPage> {
-    try {
+  list(query: TeacherListQuery, signal?: AbortSignal): Promise<TeacherPage> {
+    return call(async () => {
       const { data } = await http.get<unknown>(ENDPOINTS.list, {
         params: {
           page: query.page,
@@ -55,89 +59,59 @@ export const teacherService = {
         totalPage: parsed._meta.totalPage,
         total: parsed._meta.total,
       }
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
+    })
   },
 
-  async findOne(teacherId: string, signal?: AbortSignal): Promise<Teacher> {
-    try {
+  /** Also the way to read a teacher's linked units (`caveUnits`). */
+  findOne(teacherId: string, signal?: AbortSignal): Promise<Teacher> {
+    return call(async () => {
       const { data } = await http.get<unknown>(ENDPOINTS.item(teacherId), {
         signal,
       })
-      return teacherSchemaEnvelope.parse(data).data
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
+      return teacherEnvelope.parse(data).data
+    })
   },
 
-  async listTeacherCaveUnits(
-    teacherId: string,
-    signal?: AbortSignal,
-  ): Promise<string[]> {
-    try {
-      const { data } = await http.get<unknown>(ENDPOINTS.membership, {
-        params: { teacherId },
-        signal,
+  create(input: TeacherCreateInput): Promise<Teacher> {
+    return call(async () => {
+      const { data } = await http.post<unknown>(ENDPOINTS.list, {
+        name: input.name,
+        email: input.email,
+        password: input.password,
+        ...(input.caveUnitIds?.length
+          ? { caveUnitIds: input.caveUnitIds }
+          : {}),
       })
-      const parsed = envelopeSchema(z.array(z.string().uuid())).parse(data)
-      return parsed.data
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
+      return teacherEnvelope.parse(data).data
+    })
   },
 
-  async create(input: TeacherCreateInput): Promise<Teacher> {
-    try {
-      const { data } = await http.post<unknown>(ENDPOINTS.list, input)
-      return teacherSchemaEnvelope.parse(data).data
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
-  },
-
-  async linkExisting(input: { userId: string }): Promise<Teacher> {
-    try {
-      const { data } = await http.post<unknown>('/teachers/existing', input)
-      return teacherSchemaEnvelope.parse(data).data
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
-  },
-
-  async update(teacherId: string, input: TeacherUpdateInput): Promise<Teacher> {
-    try {
+  update(teacherId: string, input: TeacherUpdateInput): Promise<Teacher> {
+    return call(async () => {
       const { data } = await http.patch<unknown>(
         ENDPOINTS.item(teacherId),
         input,
       )
-      return teacherSchemaEnvelope.parse(data).data
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
+      return teacherEnvelope.parse(data).data
+    })
   },
 
-  async remove(teacherId: string): Promise<void> {
-    try {
+  /** Removes only the teacher profile; the account may keep other access. */
+  remove(teacherId: string): Promise<void> {
+    return call(async () => {
       await http.delete(ENDPOINTS.item(teacherId))
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
+    })
   },
 
-  async linkUnit(teacherId: string, caveUnitId: string): Promise<void> {
-    try {
-      await http.post(ENDPOINTS.membership, { teacherId, caveUnitId })
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
+  linkUnit(teacherId: string, caveUnitId: string): Promise<void> {
+    return call(async () => {
+      await http.post(ENDPOINTS.unitLink, { teacherId, caveUnitId })
+    })
   },
 
-  async unlinkUnit(teacherId: string, caveUnitId: string): Promise<void> {
-    try {
-      await http.delete(ENDPOINTS.membershipItem(teacherId, caveUnitId))
-    } catch (error) {
-      throw normalizeHttpError(error)
-    }
+  unlinkUnit(teacherId: string, caveUnitId: string): Promise<void> {
+    return call(async () => {
+      await http.delete(ENDPOINTS.unitLinkItem(teacherId, caveUnitId))
+    })
   },
 }

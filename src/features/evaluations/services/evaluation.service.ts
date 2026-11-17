@@ -1,40 +1,81 @@
 import { z } from 'zod'
-import { http } from '@/shared/lib/axios'
-import { AppError } from '@/shared/types/app-error'
+import { envelopeSchema, paginatedSchema } from '@/shared/lib/api-schema'
+import { http, normalizeHttpError } from '@/shared/lib/axios'
+
+export const EVALUATION_STATUSES = [
+  'PENDING',
+  'SCHEDULED',
+  'APPROVED',
+  'REJECTED',
+  'CANCELLED',
+] as const
+export type EvaluationStatus = (typeof EVALUATION_STATUSES)[number]
+
+export const EVALUATION_STATUS_LABELS: Record<EvaluationStatus, string> = {
+  PENDING: 'Pendente',
+  SCHEDULED: 'Agendada',
+  APPROVED: 'Aprovada',
+  REJECTED: 'Rejeitada',
+  CANCELLED: 'Cancelada',
+}
+
+const namedSchema = z.object({ id: z.string(), name: z.string() })
+const teacherSchema = z
+  .object({ id: z.string(), user: z.object({ name: z.string() }).optional() })
+  .nullable()
+  .optional()
 
 const evaluationSchema = z.object({
   id: z.string(),
-  status: z.enum(['PENDING', 'SCHEDULED', 'APPROVED', 'REJECTED', 'CANCELLED']),
+  status: z.enum(EVALUATION_STATUSES),
   scheduledAt: z.string().nullable().optional(),
   createdAt: z.string().optional(),
-  teacher: z
-    .object({ id: z.string(), user: z.object({ name: z.string() }).optional() })
-    .nullable()
-    .optional(),
+  notes: z.string().nullable().optional(),
+  certificateUrl: z.string().nullable().optional(),
   practitioner: z
-    .object({ user: z.object({ name: z.string() }).optional() })
+    .object({
+      id: z.string(),
+      user: z
+        .object({ name: z.string(), email: z.string().optional() })
+        .optional(),
+    })
     .optional(),
-  targetBelt: z.object({ name: z.string() }).optional(),
+  currentBelt: namedSchema.nullable().optional(),
+  targetBelt: namedSchema.nullable().optional(),
+  teacher: teacherSchema,
   class: z
     .object({
+      id: z.string(),
+      type: z.string().optional(),
       startsAt: z.string(),
       caveUnit: z.object({ name: z.string() }).optional(),
+      teacher: teacherSchema,
     })
     .nullable()
     .optional(),
 })
 
-const responseSchema = z.object({
-  data: z.object({ data: z.array(evaluationSchema) }),
-})
+export type Evaluation = z.infer<typeof evaluationSchema>
+
+const listResponseSchema = envelopeSchema(paginatedSchema(evaluationSchema))
+const itemResponseSchema = envelopeSchema(evaluationSchema)
+
+export const EVALUATIONS_PAGE_SIZE = 20
 
 export type EvaluationFilters = {
-  caveId: string
-  date: string
-  teacherId: string
-  status?: 'PENDING' | 'SCHEDULED'
+  caveId?: string
+  teacherId?: string
+  date?: string
+  status?: EvaluationStatus
+  page?: number
 }
-export type Evaluation = z.infer<typeof evaluationSchema>
+
+export type EvaluationPage = {
+  items: Evaluation[]
+  page: number
+  totalPages: number
+  total: number
+}
 
 export function getLocalDateInputValue(date = new Date()) {
   const year = date.getFullYear()
@@ -43,84 +84,74 @@ export function getLocalDateInputValue(date = new Date()) {
   return `${year}-${month}-${day}`
 }
 
-export async function listEvaluations(
-  filters: EvaluationFilters,
-  signal?: AbortSignal,
-) {
-  const response = await http.get('/belt-validations', {
-    params: {
-      caveId: filters.caveId || undefined,
-      date: filters.date || undefined,
-      teacherId: filters.teacherId || undefined,
-      status: filters.status,
-    },
-    signal,
-  })
-  return responseSchema.parse(response.data).data.data
+/** Teacher responsible for approving: the teacher of the scheduled class. */
+export function classTeacherId(evaluation: Evaluation): string | null {
+  return evaluation.class?.teacher?.id ?? evaluation.teacher?.id ?? null
 }
 
-const mutationResponseSchema = z.object({ data: evaluationSchema })
-
-const itemResponseSchema = z.object({ data: evaluationSchema })
-
-export async function createEvaluation(
-  input: { targetBeltId?: string; certificateUrl?: string; classId?: string },
-  signal?: AbortSignal,
-) {
-  const response = await http.post('/belt-validations', input, { signal })
-  return itemResponseSchema.parse(response.data).data
-}
-
-export async function findEvaluation(id: string, signal?: AbortSignal) {
+async function patch(path: string, body: object): Promise<Evaluation> {
   try {
-    const response = await http.get(`/belt-validations/${id}`, { signal })
-    return itemResponseSchema.parse(response.data).data
-  } catch {
-    throw new AppError('not-found', 'Validação de faixa não encontrada.')
+    const { data } = await http.patch<unknown>(path, body)
+    return itemResponseSchema.parse(data).data
+  } catch (error) {
+    throw normalizeHttpError(error)
   }
 }
 
-export async function approveEvaluation(id: string, signal?: AbortSignal) {
-  const response = await http.patch(
-    `/belt-validations/${id}/approve`,
-    {},
-    { signal },
-  )
-  return mutationResponseSchema.parse(response.data).data
-}
-
-export async function rejectEvaluation(
-  id: string,
-  suggestedBeltId: string,
-  notes?: string,
+/** One page of the validation queue, as returned by the API (`_meta`). */
+export async function listEvaluations(
+  filters: EvaluationFilters,
   signal?: AbortSignal,
-) {
-  const response = await http.patch(
-    `/belt-validations/${id}/reject`,
-    { suggestedBeltId, ...(notes ? { notes } : {}) },
-    { signal },
-  )
-  return mutationResponseSchema.parse(response.data).data
+): Promise<EvaluationPage> {
+  try {
+    // The API rejects empty strings, so only filled filters are sent.
+    const params = Object.fromEntries(
+      Object.entries({
+        ...filters,
+        page: filters.page ?? 1,
+        limit: EVALUATIONS_PAGE_SIZE,
+      }).filter(([, value]) => value !== undefined && value !== ''),
+    )
+    const { data } = await http.get<unknown>('/belt-validations', {
+      params,
+      signal,
+    })
+    const page = listResponseSchema.parse(data).data
+    return {
+      items: page.data,
+      page: page._meta.page,
+      totalPages: page._meta.totalPage,
+      total: page._meta.total,
+    }
+  } catch (error) {
+    throw normalizeHttpError(error)
+  }
 }
 
-export async function scheduleEvaluation(
+export function scheduleEvaluation(id: string, classId: string) {
+  return patch(`/belt-validations/${id}/schedule`, { classId })
+}
+
+export function approveEvaluation(
   id: string,
-  classId: string,
-  signal?: AbortSignal,
+  input: { approvedBeltId?: string; notes?: string } = {},
 ) {
-  const response = await http.patch(
-    `/belt-validations/${id}/schedule`,
-    { classId },
-    { signal },
-  )
-  return mutationResponseSchema.parse(response.data).data
+  return patch(`/belt-validations/${id}/approve`, {
+    ...(input.approvedBeltId ? { approvedBeltId: input.approvedBeltId } : {}),
+    ...(input.notes ? { notes: input.notes } : {}),
+  })
 }
 
-export async function cancelEvaluation(id: string, signal?: AbortSignal) {
-  const response = await http.patch(
-    `/belt-validations/${id}/cancel`,
-    {},
-    { signal },
-  )
-  return mutationResponseSchema.parse(response.data).data
+export function rejectEvaluation(
+  id: string,
+  input: { suggestedBeltId: string; notes?: string },
+) {
+  return patch(`/belt-validations/${id}/reject`, {
+    suggestedBeltId: input.suggestedBeltId,
+    ...(input.notes ? { notes: input.notes } : {}),
+  })
+}
+
+export function cancelEvaluation(id: string) {
+  return patch(`/belt-validations/${id}/cancel`, {})
 }

@@ -96,8 +96,7 @@ const caveUnitInputSchema = z.object({
   neighborhood: optionalTrimmedString,
   latitude: z
     .preprocess(
-      (value) =>
-        typeof value === 'number' ? value : Number(value),
+      (value) => (typeof value === 'number' ? value : Number(value)),
       z.number().finite('Informe uma latitude válida.'),
     )
     .refine((value) => value >= -90 && value <= 90, {
@@ -105,8 +104,7 @@ const caveUnitInputSchema = z.object({
     }),
   longitude: z
     .preprocess(
-      (value) =>
-        typeof value === 'number' ? value : Number(value),
+      (value) => (typeof value === 'number' ? value : Number(value)),
       z.number().finite('Informe uma longitude válida.'),
     )
     .refine((value) => value >= -180 && value <= 180, {
@@ -123,13 +121,15 @@ export type CreatePlatformCaveInput = z.infer<typeof createPlatformCaveSchema>
 
 // --- Atualizar caverna ---
 
-export const updatePlatformCaveSchema = z.object({
-  name: optionalTrimmedString,
-  active: z.boolean().optional(),
-}).refine(
-  (values) => values.name !== undefined || values.active !== undefined,
-  'Informe ao menos um campo para atualizar.',
-)
+export const updatePlatformCaveSchema = z
+  .object({
+    name: optionalTrimmedString,
+    active: z.boolean().optional(),
+  })
+  .refine(
+    (values) => values.name !== undefined || values.active !== undefined,
+    'Informe ao menos um campo para atualizar.',
+  )
 
 export type UpdatePlatformCaveInput = z.infer<typeof updatePlatformCaveSchema>
 

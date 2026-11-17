@@ -10,11 +10,7 @@ import { useCreatePractitioner } from '@/features/practitioners/hooks/use-practi
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { notify } from '@/shared/lib/notifications'
-import { AppError } from '@/shared/types/app-error'
-
-function messageForError(error: unknown, fallback: string) {
-  return error instanceof AppError ? error.message : fallback
-}
+import { getErrorMessage } from '@/shared/lib/error-message'
 
 export function PractitionerCreateForm() {
   const createPractitioner = useCreatePractitioner()
@@ -31,12 +27,6 @@ export function PractitionerCreateForm() {
       email: '',
       password: '',
       confirmPassword: '',
-      age: '',
-      address: '',
-      number: '',
-      complement: '',
-      neighborhood: '',
-      city: '',
       latitude: '',
       longitude: '',
     },
@@ -44,14 +34,12 @@ export function PractitionerCreateForm() {
 
   async function submit(values: PractitionerCreateFormValues) {
     try {
-      const age = values.age ? Number(values.age) : undefined
       const latitude = values.latitude ? Number(values.latitude) : undefined
       const longitude = values.longitude ? Number(values.longitude) : undefined
       const practitioner: PractitionerInput = {
         name: values.name,
         email: values.email,
         password: values.password,
-        ...(age !== undefined ? { age } : {}),
         ...(latitude !== undefined && longitude !== undefined
           ? { latitude, longitude }
           : {}),
@@ -61,7 +49,7 @@ export function PractitionerCreateForm() {
       reset()
     } catch (error) {
       notify.error(
-        messageForError(error, 'Não foi possível cadastrar o aluno.'),
+        getErrorMessage(error, 'Não foi possível cadastrar o aluno.'),
       )
     }
   }
@@ -124,80 +112,12 @@ export function PractitionerCreateForm() {
           </span>
         )}
       </label>
-      <label className="grid gap-2 text-sm font-medium">
-        Idade (opcional)
-        <Input
-          aria-invalid={Boolean(errors.age)}
-          type="number"
-          {...register('age')}
-        />
-        {errors.age && (
-          <span className="text-xs text-destructive">{errors.age.message}</span>
-        )}
-      </label>
-      <div className="pt-2 border-t border-border">
-        <h3 className="text-sm font-semibold text-muted-foreground">
-          Endereço
-        </h3>
-        <label className="grid gap-2 text-sm font-medium mt-2">
-          Logradouro
-          <Input
-            aria-invalid={Boolean(errors.address)}
-            {...register('address')}
-          />
-          {errors.address && (
-            <span className="text-xs text-destructive">
-              {errors.address.message}
-            </span>
-          )}
-        </label>
-        <div className="grid gap-3 md:grid-cols-3">
-          <label className="grid gap-2 text-sm font-medium">
-            Número
-            <Input
-              aria-invalid={Boolean(errors.number)}
-              {...register('number')}
-            />
-            {errors.number && (
-              <span className="text-xs text-destructive">
-                {errors.number.message}
-              </span>
-            )}
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Complemento
-            <Input {...register('complement')} />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Bairro
-            <Input
-              aria-invalid={Boolean(errors.neighborhood)}
-              {...register('neighborhood')}
-            />
-            {errors.neighborhood && (
-              <span className="text-xs text-destructive">
-                {errors.neighborhood.message}
-              </span>
-            )}
-          </label>
-        </div>
-        <label className="grid gap-2 text-sm font-medium mt-3">
-          Cidade
-          <Input aria-invalid={Boolean(errors.city)} {...register('city')} />
-          {errors.city && (
-            <span className="text-xs text-destructive">
-              {errors.city.message}
-            </span>
-          )}
-        </label>
-      </div>
       <div className="pt-2 border-t border-border">
         <h3 className="text-sm font-semibold text-muted-foreground">
           Coordenadas
         </h3>
         <p className="text-xs text-muted-foreground">
-          Preencha latitude e longitude manualmente. A integração com um serviço
-          de geocodificação ainda será definida.
+          Opcional. Informe latitude e longitude juntas.
         </p>
         <div className="grid gap-3 md:grid-cols-2 mt-2">
           <label className="grid gap-2 text-sm font-medium">

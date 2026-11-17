@@ -1,201 +1,249 @@
-import { z } from 'zod'
-import { http } from '@/shared/lib/axios'
+import { envelopeSchema, paginatedSchema } from '@/shared/lib/api-schema'
+import { http, normalizeHttpError } from '@/shared/lib/axios'
 import {
-  classInputSchema,
-  classSchema,
-  type AcademyClass,
-  type ClassInput,
+  apiClassSchema,
+  apiEnrollmentSchema,
+  type ClassFormValues,
+  type ClassItem,
+  type ClassType,
   type Enrollment,
 } from '@/features/classes/schemas/class.schema'
+import { localDateTimeToIso } from '@/features/classes/services/class-dates'
+import type { z } from 'zod'
 
-const apiClassSchema = z.object({
-  id: z.string(),
-  type: z.enum(['SCHEDULED', 'VALIDATION', 'EXAM']),
-  startsAt: z.string(),
-  endsAt: z.string(),
-  capacity: z.number(),
-  caveUnit: z.object({ id: z.string(), name: z.string() }).optional(),
-  teacher: z
-    .object({ id: z.string(), user: z.object({ name: z.string() }).optional() })
-    .optional(),
-  belts: z.array(z.object({ belt: z.object({ name: z.string() }) })).optional(),
-  enrollments: z
-    .array(
-      z.object({
-        id: z.string(),
-        practitioner: z
-          .object({ user: z.object({ name: z.string() }).optional() })
-          .optional(),
-        status: z.string(),
-        createdAt: z.string(),
-      }),
-    )
-    .optional(),
-})
-const listResponseSchema = z.object({
-  data: z.object({ data: z.array(apiClassSchema) }),
-})
-const itemResponseSchema = z.object({ data: apiClassSchema })
-export type ClassFilters = { unitId: string; date: string; teacherId?: string }
-function toIso(date: string, time: string) {
-  return new Date(`${date}T${time}:00`).toISOString()
+const ENDPOINTS = {
+  list: '/classes',
+  item: (id: string) => `/classes/${id}`,
+  belts: (id: string) => `/classes/${id}/belts`,
+  enrollments: (id: string) => `/classes/${id}/enrollments`,
+  checkIn: (id: string, enrollmentId: string) =>
+    `/classes/${id}/enrollments/${enrollmentId}/check-in`,
+  participation: (id: string, enrollmentId: string) =>
+    `/classes/${id}/enrollments/${enrollmentId}/participation`,
+  cancel: (id: string, enrollmentId: string) =>
+    `/classes/${id}/enrollments/${enrollmentId}/cancel`,
+} as const
+
+const listResponseSchema = envelopeSchema(paginatedSchema(apiClassSchema))
+const itemResponseSchema = envelopeSchema(apiClassSchema)
+const enrollmentsResponseSchema = envelopeSchema(
+  paginatedSchema(apiEnrollmentSchema),
+)
+
+export const CLASSES_PAGE_SIZE = 20
+
+export type ClassListQuery = {
+  /** Every unit of the cave; the API ignores it when `caveUnitId` is sent. */
+  caveId?: string
+  caveUnitId?: string
+  teacherId?: string
+  type?: ClassType
+  /** ISO datetime, inclusive lower bound of `startsAt`. */
+  from?: string
+  /** ISO datetime, inclusive upper bound of `startsAt`. */
+  to?: string
+  page?: number
+  /** Page size; the API caps it at 100. */
+  limit?: number
 }
-function toClass(item: z.infer<typeof apiClassSchema>): AcademyClass {
-  return classSchema.parse({
+
+export type ClassPage = {
+  items: ClassItem[]
+  page: number
+  totalPages: number
+  total: number
+}
+
+export type ParticipationInput = {
+  startedAt: string
+  endedAt: string
+  reason?: string
+}
+
+function toClassItem(item: z.infer<typeof apiClassSchema>): ClassItem {
+  return {
     id: item.id,
-    unitId: item.caveUnit?.id ?? '',
-    unitName: item.caveUnit?.name ?? 'Unidade não informada',
-    teacherId: item.teacher?.id ?? '',
-    teacherName: item.teacher?.user?.name ?? 'Professor não informado',
-    date: item.startsAt.slice(0, 10),
-    startsAt: new Date(item.startsAt).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    endsAt: new Date(item.endsAt).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
+    type: item.type,
+    startsAt: item.startsAt,
+    endsAt: item.endsAt,
     capacity: item.capacity,
-    type: { SCHEDULED: 'regular', VALIDATION: 'validation', EXAM: 'exam' }[
-      item.type
-    ],
-    eligibleBelts: (item.belts ?? []).map(
-      ({ belt }) =>
-        belt.name.toLowerCase() as AcademyClass['eligibleBelts'][number],
-    ),
-    movements: [],
-    enrollments: (item.enrollments ?? []).map((e) => ({
-      id: e.id,
-      studentName: e.practitioner?.user?.name ?? 'Aluno não informado',
-      belt: null,
-      status:
-        e.status === 'CONFIRMED'
-          ? 'confirmed'
-          : e.status === 'CANCELLED'
-            ? 'cancelled'
-            : 'reserved',
-      enrolledAt: e.createdAt,
+    caveUnitId: item.caveUnit?.id ?? '',
+    caveUnitName: item.caveUnit?.name ?? 'Unidade não informada',
+    caveName: item.caveUnit?.cave?.name ?? null,
+    teacherId: item.teacher?.id ?? '',
+    teacherName: item.teacher?.user?.name ?? null,
+    belts: (item.belts ?? []).map(({ belt }) => ({
+      id: belt.id,
+      name: belt.name,
     })),
-  })
-}
-function typeOf(value: ClassInput['type']) {
-  return { regular: 'SCHEDULED', validation: 'VALIDATION', exam: 'EXAM' }[value]
+  }
 }
 
-const enrollmentItemSchema = z.object({
-  id: z.string(),
-  practitionerId: z.string(),
-  practitioner: z
-    .object({ user: z.object({ name: z.string() }).optional() })
-    .optional(),
-  status: z.string(),
-  createdAt: z.string(),
-})
-const enrollmentsResponseSchema = z.object({
-  data: z.object({ data: z.array(enrollmentItemSchema) }),
-})
+function toEnrollment(item: z.infer<typeof apiEnrollmentSchema>): Enrollment {
+  return {
+    id: item.id,
+    status: item.status,
+    confirmedAt: item.confirmedAt ?? null,
+    practitionerId: item.practitioner?.id ?? '',
+    studentName: item.practitioner?.user?.name ?? 'Aluno não informado',
+    studentEmail: item.practitioner?.user?.email ?? null,
+  }
+}
 
-const classEnrollmentDtoSchema = z.object({
-  practitionerId: z.string().uuid(),
-})
+function toClassBody(values: ClassFormValues) {
+  return {
+    type: values.type,
+    startsAt: localDateTimeToIso(values.date, values.startTime),
+    endsAt: localDateTimeToIso(values.date, values.endTime),
+    capacity: values.capacity,
+  }
+}
+
+async function call<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request()
+  } catch (error) {
+    throw normalizeHttpError(error)
+  }
+}
+
+async function fetchClassPage(
+  query: ClassListQuery,
+  signal?: AbortSignal,
+): Promise<ClassPage> {
+  // Empty values are omitted: the API rejects empty query strings.
+  const params = Object.fromEntries(
+    Object.entries(query).filter(
+      ([, value]) => value !== undefined && value !== '',
+    ),
+  )
+  const { data } = await http.get<unknown>(ENDPOINTS.list, { params, signal })
+  const page = listResponseSchema.parse(data).data
+  return {
+    items: page.data.map(toClassItem),
+    page: page._meta.page,
+    totalPages: page._meta.totalPage,
+    total: page._meta.total,
+  }
+}
 
 export const classService = {
-  async list(filters: ClassFilters, signal?: AbortSignal) {
-    const response = await http.get('/classes', {
-      params: {
-        page: 1,
-        limit: 100,
-        caveUnitId: filters.unitId || undefined,
-        teacherId: filters.teacherId || undefined,
-      },
-      signal,
+  /**
+   * First page only (100 by default), for selectors and small windows. Lists
+   * that the user browses must use `listPage`, which keeps the API pagination.
+   */
+  list(query: ClassListQuery, signal?: AbortSignal): Promise<ClassItem[]> {
+    return call(async () => {
+      const page = await fetchClassPage(
+        { ...query, page: query.page ?? 1, limit: query.limit ?? 100 },
+        signal,
+      )
+      return page.items
     })
-    const items = listResponseSchema.parse(response.data).data.data.map(toClass)
-    return filters.date
-      ? items.filter((item) => item.date === filters.date)
-      : items
   },
-  async findOne(id: string, signal?: AbortSignal) {
-    const response = await http.get(`/classes/${id}`, { signal })
-    return toClass(itemResponseSchema.parse(response.data).data)
-  },
-  async create(input: ClassInput) {
-    const p = classInputSchema.parse(input)
-    const response = await http.post('/classes', {
-      caveUnitId: p.unitId,
-      teacherId: p.teacherId,
-      type: typeOf(p.type),
-      startsAt: toIso(p.date, p.startsAt),
-      endsAt: toIso(p.date, p.endsAt),
-      capacity: p.capacity,
-      beltIds: [],
-    })
-    return toClass(itemResponseSchema.parse(response.data).data)
-  },
-  async update(id: string, input: ClassInput) {
-    const p = classInputSchema.parse(input)
-    const response = await http.patch(`/classes/${id}`, {
-      type: typeOf(p.type),
-      startsAt: toIso(p.date, p.startsAt),
-      endsAt: toIso(p.date, p.endsAt),
-      capacity: p.capacity,
-      teacherId: p.teacherId,
-    })
-    return toClass(itemResponseSchema.parse(response.data).data)
-  },
-  async remove(id: string) {
-    await http.delete(`/classes/${id}`)
-  },
-  async replaceBelts(id: string, beltIds: string[]) {
-    const response = await http.put(`/classes/${id}/belts`, { beltIds })
-    return toClass(itemResponseSchema.parse(response.data).data)
-  },
-  async enroll(classId: string, practitionerId: string) {
-    await http.post(
-      `/classes/${classId}/enrollments`,
-      classEnrollmentDtoSchema.parse({ practitionerId }),
+
+  /** One page of classes, as returned by the API (`_meta`). */
+  listPage(query: ClassListQuery, signal?: AbortSignal): Promise<ClassPage> {
+    return call(() =>
+      fetchClassPage(
+        {
+          ...query,
+          page: query.page ?? 1,
+          limit: query.limit ?? CLASSES_PAGE_SIZE,
+        },
+        signal,
+      ),
     )
   },
-  async listEnrollments(
+
+  findOne(id: string, signal?: AbortSignal): Promise<ClassItem> {
+    return call(async () => {
+      const { data } = await http.get<unknown>(ENDPOINTS.item(id), { signal })
+      return toClassItem(itemResponseSchema.parse(data).data)
+    })
+  },
+
+  create(values: ClassFormValues): Promise<ClassItem> {
+    return call(async () => {
+      const { data } = await http.post<unknown>(ENDPOINTS.list, {
+        ...toClassBody(values),
+        caveUnitId: values.caveUnitId,
+        teacherId: values.teacherId,
+        beltIds: values.beltIds,
+      })
+      return toClassItem(itemResponseSchema.parse(data).data)
+    })
+  },
+
+  /**
+   * PATCH does not accept belts, so the eligible belts are replaced after.
+   * `teacherId` is only sent when it changed: teachers may not reassign a
+   * class, only managers can.
+   */
+  update(
+    id: string,
+    values: ClassFormValues,
+    previousTeacherId?: string,
+  ): Promise<void> {
+    return call(async () => {
+      await http.patch(ENDPOINTS.item(id), {
+        ...toClassBody(values),
+        ...(values.teacherId && values.teacherId !== previousTeacherId
+          ? { teacherId: values.teacherId }
+          : {}),
+      })
+      await http.put(ENDPOINTS.belts(id), { beltIds: values.beltIds })
+    })
+  },
+
+  remove(id: string): Promise<void> {
+    return call(async () => {
+      await http.delete(ENDPOINTS.item(id))
+    })
+  },
+
+  listEnrollments(
     classId: string,
     signal?: AbortSignal,
   ): Promise<Enrollment[]> {
-    const response = await http.get(`/classes/${classId}/enrollments`, {
-      params: { page: 1, limit: 100 },
-      signal,
+    return call(async () => {
+      const { data } = await http.get<unknown>(ENDPOINTS.enrollments(classId), {
+        params: { page: 1, limit: 100 },
+        signal,
+      })
+      return enrollmentsResponseSchema.parse(data).data.data.map(toEnrollment)
     })
-    const items = enrollmentsResponseSchema.parse(response.data).data.data
-    return items.map((e) => ({
-      id: e.id,
-      studentName: e.practitioner?.user?.name ?? 'Aluno não informado',
-      belt: null,
-      status:
-        e.status === 'CONFIRMED'
-          ? 'confirmed'
-          : e.status === 'CANCELLED'
-            ? 'cancelled'
-            : 'reserved',
-      enrolledAt: e.createdAt,
-    }))
   },
-  async checkIn(classId: string, enrollmentId: string) {
-    await http.post(`/classes/${classId}/enrollments/${enrollmentId}/check-in`)
+
+  enroll(classId: string, practitionerId: string): Promise<void> {
+    return call(async () => {
+      await http.post(ENDPOINTS.enrollments(classId), { practitionerId })
+    })
   },
-  async setParticipation(
+
+  checkIn(classId: string, enrollmentId: string): Promise<void> {
+    return call(async () => {
+      await http.post(ENDPOINTS.checkIn(classId, enrollmentId))
+    })
+  },
+
+  setParticipation(
     classId: string,
     enrollmentId: string,
-    startedAt: string,
-    endedAt: string,
-    pauses: { startedAt: string; endedAt: string }[] = [],
-    reason?: string,
-  ) {
-    await http.patch(
-      `/classes/${classId}/enrollments/${enrollmentId}/participation`,
-      { startedAt, endedAt, pauses, ...(reason ? { reason } : {}) },
-    )
+    input: ParticipationInput,
+  ): Promise<void> {
+    return call(async () => {
+      await http.patch(ENDPOINTS.participation(classId, enrollmentId), {
+        startedAt: input.startedAt,
+        endedAt: input.endedAt,
+        ...(input.reason ? { reason: input.reason } : {}),
+      })
+    })
   },
-  async cancel(classId: string, enrollmentId: string) {
-    await http.post(`/classes/${classId}/enrollments/${enrollmentId}/cancel`)
+
+  cancelEnrollment(classId: string, enrollmentId: string): Promise<void> {
+    return call(async () => {
+      await http.post(ENDPOINTS.cancel(classId, enrollmentId))
+    })
   },
 }

@@ -1,47 +1,86 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LoaderCircle } from 'lucide-react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { useCaveUnits } from '@/features/academies'
+import {
+  cavesOf,
+  useScopeUnits,
+  type ScopeUnit,
+} from '@/features/management/hooks/use-scope-units'
 import { useTeacherMutations } from '@/features/teachers/hooks/use-teachers'
 import type { Teacher } from '@/features/teachers/schemas/teacher.schema'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
+import { getErrorMessage } from '@/shared/lib/error-message'
 import { notify } from '@/shared/lib/notifications'
-import { AppError } from '@/shared/types/app-error'
+import { useSession } from '@/shared/session/session'
 
-const uuid = z.string().uuid('Informe UUIDs de unidades válidos.')
+const selectClassName =
+  'h-9 w-full rounded-md border border-input bg-background px-3 text-sm font-normal shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
 
-function parseUnitIds(value: string) {
-  return z.array(uuid).safeParse(
-    value
-      .split(/[\s,]+/)
-      .map((id) => id.trim())
-      .filter(Boolean),
+export function UnitCheckboxList({
+  units,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  units: ScopeUnit[]
+  checked: (unitId: string) => boolean
+  disabled?: boolean
+  onToggle: (unit: ScopeUnit, nextChecked: boolean) => void
+}) {
+  if (units.length === 0)
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nenhuma unidade ativa disponível.
+      </p>
+    )
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {units.map((unit) => (
+        <label
+          key={unit.id}
+          className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent/50"
+        >
+          <input
+            type="checkbox"
+            checked={checked(unit.id)}
+            disabled={disabled}
+            onChange={(event) => onToggle(unit, event.target.checked)}
+          />
+          {unit.name}
+        </label>
+      ))}
+    </div>
   )
-}
-
-function unitIdsAreValid(value: string) {
-  return parseUnitIds(value).success
-}
-
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof AppError ? error.message : fallback
 }
 
 const createFormSchema = z.object({
   name: z.string().trim().min(1, 'Informe o nome.'),
-  email: z.string().email('Informe um e-mail válido.'),
-  password: z.string().min(1, 'Informe uma senha inicial.'),
-  caveUnitId: z.string().uuid('Selecione uma unidade válida.'),
+  email: z.string().trim().email('Informe um e-mail válido.'),
+  password: z.string().min(8, 'A senha deve ter pelo menos 8 caracteres.'),
 })
 
 type CreateFormValues = z.infer<typeof createFormSchema>
 
-export function TeacherCreateForm({ caveId }: { caveId?: string }) {
+/**
+ * Creates the teacher account. Units are optional on the platform (pick a
+ * cave, then its units); a cave admin must link at least one unit of its cave.
+ */
+export function TeacherCreateForm() {
+  const { selectedContext } = useSession()
+  const isPlatform = selectedContext?.role === 'platform'
   const mutations = useTeacherMutations()
-  const unitsQuery = useCaveUnits(caveId ?? '')
-  const units = unitsQuery.data?.filter((unit) => unit.active) ?? []
+  const scope = useScopeUnits()
+  const [caveId, setCaveId] = useState('')
+  const [unitIds, setUnitIds] = useState<string[]>([])
+  const [unitsError, setUnitsError] = useState<string | null>(null)
+
+  const caves = cavesOf(scope.units)
+  const visibleUnits = isPlatform
+    ? scope.units.filter((unit) => unit.caveId === caveId)
+    : scope.units
 
   const {
     register,
@@ -50,52 +89,61 @@ export function TeacherCreateForm({ caveId }: { caveId?: string }) {
     formState: { errors, isSubmitting },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createFormSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      caveUnitId: '',
-    },
+    defaultValues: { name: '', email: '', password: '' },
   })
 
+  function toggleUnit(unit: ScopeUnit, nextChecked: boolean) {
+    setUnitsError(null)
+    setUnitIds((current) =>
+      nextChecked
+        ? [...current, unit.id]
+        : current.filter((id) => id !== unit.id),
+    )
+  }
+
   async function submit(values: CreateFormValues) {
-    const unit = units.find((u) => u.id === values.caveUnitId)
+    if (!isPlatform && unitIds.length === 0) {
+      setUnitsError('Selecione ao menos uma unidade da caverna.')
+      return
+    }
     try {
-      await mutations.create.mutateAsync({
-        name: values.name,
-        email: values.email,
-        password: values.password,
-        caveUnitIds: [
-          { caveUnitId: values.caveUnitId, caveName: unit?.name ?? '' },
-        ],
-      })
+      await mutations.create.mutateAsync({ ...values, caveUnitIds: unitIds })
       reset()
+      setUnitIds([])
       notify.success('Professor criado.')
     } catch (error) {
-      notify.error(errorMessage(error, 'Não foi possível criar o professor.'))
+      notify.error(
+        getErrorMessage(error, 'Não foi possível criar o professor.'),
+      )
     }
   }
 
+  const pending = isSubmitting || mutations.create.isPending
+
   return (
     <form
-      className="grid gap-4 rounded-xl border border-border bg-card p-5"
+      className="grid gap-3 rounded-xl border border-border bg-card p-4"
       onSubmit={(event) => void handleSubmit(submit)(event)}
       noValidate
     >
       <div>
-        <h2 className="text-lg font-semibold">Novo professor</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          O professor será associado à caverna inteira.
+        <h2 className="text-base font-semibold">Novo professor</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {isPlatform
+            ? 'As unidades são opcionais e podem ser vinculadas depois.'
+            : 'Vincule ao menos uma unidade da sua caverna.'}
         </p>
       </div>
-      <label className="grid gap-2 text-sm font-medium">
+      <label className="grid gap-1.5 text-sm font-medium">
         Nome
         <Input aria-invalid={Boolean(errors.name)} {...register('name')} />
         {errors.name && (
-          <span className="text-destructive">{errors.name.message}</span>
+          <span className="text-xs text-destructive">
+            {errors.name.message}
+          </span>
         )}
       </label>
-      <label className="grid gap-2 text-sm font-medium">
+      <label className="grid gap-1.5 text-sm font-medium">
         E-mail
         <Input
           type="email"
@@ -103,10 +151,12 @@ export function TeacherCreateForm({ caveId }: { caveId?: string }) {
           {...register('email')}
         />
         {errors.email && (
-          <span className="text-destructive">{errors.email.message}</span>
+          <span className="text-xs text-destructive">
+            {errors.email.message}
+          </span>
         )}
       </label>
-      <label className="grid gap-2 text-sm font-medium">
+      <label className="grid gap-1.5 text-sm font-medium">
         Senha inicial
         <Input
           type="password"
@@ -115,67 +165,58 @@ export function TeacherCreateForm({ caveId }: { caveId?: string }) {
           {...register('password')}
         />
         {errors.password && (
-          <span className="text-destructive">{errors.password.message}</span>
+          <span className="text-xs text-destructive">
+            {errors.password.message}
+          </span>
         )}
       </label>
-      <label className="grid gap-2 text-sm font-medium">
-        Unidade
-        <select
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          disabled={
-            !caveId ||
-            unitsQuery.isPending ||
-            unitsQuery.isError ||
-            units.length === 0
-          }
-          aria-invalid={Boolean(errors.caveUnitId)}
-          {...register('caveUnitId')}
-        >
-          <option value="">
-            {!caveId
-              ? 'Contexto de caverna não selecionado'
-              : unitsQuery.isPending
-                ? 'Carregando unidades…'
-                : 'Selecione uma unidade'}
-          </option>
-          {units.map((unit) => (
-            <option key={unit.id} value={unit.id}>
-              {unit.name}
-            </option>
-          ))}
-        </select>
-        {errors.caveUnitId && (
-          <span className="text-destructive">{errors.caveUnitId.message}</span>
-        )}
-        {unitsQuery.isError && (
-          <span className="text-destructive">
+      <fieldset className="grid gap-1.5">
+        <legend className="mb-1.5 text-sm font-medium">
+          Unidades {isPlatform ? '(opcional)' : ''}
+        </legend>
+        {scope.isPending ? (
+          <p className="text-sm text-muted-foreground">Carregando unidades…</p>
+        ) : scope.isError ? (
+          <p className="text-sm text-destructive">
             Não foi possível carregar as unidades.
+          </p>
+        ) : (
+          <>
+            {isPlatform && (
+              <select
+                aria-label="Caverna"
+                className={selectClassName}
+                value={caveId}
+                onChange={(event) => {
+                  setCaveId(event.target.value)
+                  setUnitIds([])
+                }}
+              >
+                <option value="">Sem unidade por enquanto</option>
+                {caves.map((cave) => (
+                  <option key={cave.id} value={cave.id}>
+                    {cave.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {(!isPlatform || caveId) && (
+              <UnitCheckboxList
+                units={visibleUnits}
+                checked={(unitId) => unitIds.includes(unitId)}
+                onToggle={toggleUnit}
+              />
+            )}
+          </>
+        )}
+        {unitsError && (
+          <span role="alert" className="text-xs text-destructive">
+            {unitsError}
           </span>
         )}
-        {!caveId && (
-          <span className="text-muted-foreground">
-            Selecione o contexto da caverna antes de escolher uma unidade.
-          </span>
-        )}
-        {!unitsQuery.isPending &&
-          !unitsQuery.isError &&
-          units.length === 0 &&
-          caveId && (
-            <span className="text-muted-foreground">
-              Nenhuma unidade ativa disponível.
-            </span>
-          )}
-      </label>
-      {errors.root?.message && (
-        <p role="alert" className="text-xs text-destructive">
-          {errors.root.message}
-        </p>
-      )}
-      <Button
-        type="submit"
-        disabled={isSubmitting || mutations.create.isPending}
-      >
-        {isSubmitting || mutations.create.isPending ? (
+      </fieldset>
+      <Button type="submit" className="mt-1" disabled={pending}>
+        {pending ? (
           <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
         ) : null}
         Criar professor
@@ -186,66 +227,41 @@ export function TeacherCreateForm({ caveId }: { caveId?: string }) {
 
 const updateFormSchema = z.object({
   name: z.string().trim().min(1, 'Informe o nome.'),
-  email: z
-    .string()
-    .trim()
-    .refine(
-      (value) => value === '' || z.email().safeParse(value).success,
-      'Informe um e-mail válido.',
-    ),
-  replaceUnits: z.boolean(),
-  caveUnitIds: z.string().refine(unitIdsAreValid, 'Informe UUIDs válidos.'),
+  email: z.string().trim().email('Informe um e-mail válido.'),
 })
 
 type UpdateFormValues = z.infer<typeof updateFormSchema>
 
-export function TeacherUpdateForm({
-  teacher,
-  onSaved,
-}: {
-  teacher: Teacher
-  onSaved: () => void
-}) {
+export function TeacherUpdateForm({ teacher }: { teacher: Teacher }) {
   const mutations = useTeacherMutations()
   const {
     register,
     handleSubmit,
-    control,
     formState: { errors, isSubmitting },
   } = useForm<UpdateFormValues>({
     resolver: zodResolver(updateFormSchema),
-    defaultValues: {
-      name: teacher.name,
-      email: teacher.email ?? '',
-      replaceUnits: false,
-      caveUnitIds: teacher.caveUnitIds?.join('\n') ?? '',
-    },
+    defaultValues: { name: teacher.name, email: teacher.email ?? '' },
   })
-  const replaceUnits = useWatch({ control, name: 'replaceUnits' })
 
   async function submit(values: UpdateFormValues) {
-    const input: { name?: string; email?: string; caveUnitIds?: string[] } = {}
+    const input: { name?: string; email?: string } = {}
     if (values.name !== teacher.name) input.name = values.name
     if (values.email !== (teacher.email ?? '')) input.email = values.email
-    if (values.replaceUnits) {
-      const unitIds = parseUnitIds(values.caveUnitIds)
-      if (!unitIds.success) return
-      input.caveUnitIds = unitIds.data
-    }
     if (Object.keys(input).length === 0) {
-      notify.error('Altere ao menos um campo antes de salvar.')
+      notify.info('Nenhuma alteração para salvar.')
       return
     }
     try {
       await mutations.update.mutateAsync({ teacherId: teacher.id, input })
       notify.success('Professor atualizado.')
-      onSaved()
     } catch (error) {
       notify.error(
-        errorMessage(error, 'Não foi possível atualizar o professor.'),
+        getErrorMessage(error, 'Não foi possível atualizar o professor.'),
       )
     }
   }
+
+  const pending = isSubmitting || mutations.update.isPending
 
   return (
     <form
@@ -258,7 +274,9 @@ export function TeacherUpdateForm({
         Nome
         <Input aria-invalid={Boolean(errors.name)} {...register('name')} />
         {errors.name && (
-          <span className="text-destructive">{errors.name.message}</span>
+          <span className="text-xs text-destructive">
+            {errors.name.message}
+          </span>
         )}
       </label>
       <label className="grid gap-2 text-sm font-medium">
@@ -269,143 +287,16 @@ export function TeacherUpdateForm({
           {...register('email')}
         />
         {errors.email && (
-          <span className="text-destructive">{errors.email.message}</span>
+          <span className="text-xs text-destructive">
+            {errors.email.message}
+          </span>
         )}
       </label>
-      <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" {...register('replaceUnits')} />
-        Substituir vínculos de unidades
-      </label>
-      {replaceUnits && (
-        <label className="grid gap-2 text-sm font-medium">
-          UUIDs das unidades
-          <textarea
-            className="min-h-20 rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-            aria-invalid={Boolean(errors.caveUnitIds)}
-            {...register('caveUnitIds')}
-          />
-          {errors.caveUnitIds && (
-            <span className="text-destructive">
-              {errors.caveUnitIds.message}
-            </span>
-          )}
-        </label>
-      )}
-      <Button
-        type="submit"
-        disabled={isSubmitting || mutations.update.isPending}
-      >
-        {isSubmitting || mutations.update.isPending ? (
+      <Button type="submit" disabled={pending}>
+        {pending ? (
           <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
         ) : null}
         Salvar alterações
-      </Button>
-    </form>
-  )
-}
-
-export function TeacherUnitLinkForm({
-  teacherId,
-  caveId,
-  action,
-}: {
-  teacherId: string
-  caveId: string
-  action: 'link' | 'unlink'
-}) {
-  const mutations = useTeacherMutations()
-  const unitsQuery = useCaveUnits(caveId)
-  const units = unitsQuery.data?.filter((unit) => unit.active) ?? []
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<{ caveUnitId: string }>({
-    resolver: zodResolver(z.object({ caveUnitId: uuid })),
-    defaultValues: { caveUnitId: '' },
-  })
-
-  async function submit({ caveUnitId }: { caveUnitId: string }) {
-    try {
-      const mutation =
-        action === 'link' ? mutations.linkUnit : mutations.unlinkUnit
-      await mutation.mutateAsync({ teacherId, caveUnitId })
-      reset()
-      notify.success(
-        action === 'link'
-          ? 'Professor vinculado à unidade.'
-          : 'Professor desvinculado da unidade.',
-      )
-    } catch (error) {
-      notify.error(errorMessage(error, 'Não foi possível alterar o vínculo.'))
-    }
-  }
-
-  const label =
-    action === 'link' ? 'Vincular a uma unidade' : 'Desvincular de uma unidade'
-  const pending =
-    action === 'link'
-      ? mutations.linkUnit.isPending
-      : mutations.unlinkUnit.isPending
-  return (
-    <form
-      className="grid gap-3 rounded-xl border border-border bg-card p-5"
-      onSubmit={(event) => void handleSubmit(submit)(event)}
-      noValidate
-    >
-      <h2 className="text-lg font-semibold">{label}</h2>
-      <label className="grid gap-2 text-sm font-medium">
-        Unidade
-        <select
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          disabled={
-            !caveId ||
-            unitsQuery.isPending ||
-            unitsQuery.isError ||
-            units.length === 0
-          }
-          aria-invalid={Boolean(errors.caveUnitId)}
-          {...register('caveUnitId')}
-        >
-          <option value="">
-            {!caveId
-              ? 'Contexto de caverna não selecionado'
-              : unitsQuery.isPending
-                ? 'Carregando unidades…'
-                : 'Selecione uma unidade'}
-          </option>
-          {units.map((unit) => (
-            <option key={unit.id} value={unit.id}>
-              {unit.name}
-            </option>
-          ))}
-        </select>
-        {errors.caveUnitId && (
-          <span className="text-destructive">{errors.caveUnitId.message}</span>
-        )}
-        {unitsQuery.isError && (
-          <span className="text-destructive">
-            Não foi possível carregar as unidades.
-          </span>
-        )}
-        {!caveId && (
-          <span className="text-destructive">
-            Selecione o contexto da caverna antes de vincular uma unidade.
-          </span>
-        )}
-        {!unitsQuery.isPending && !unitsQuery.isError && units.length === 0 && (
-          <span className="text-muted-foreground">
-            Nenhuma unidade ativa disponível.
-          </span>
-        )}
-      </label>
-      <Button
-        type="submit"
-        variant={action === 'unlink' ? 'outline' : 'default'}
-        disabled={isSubmitting || pending}
-      >
-        {label}
       </Button>
     </form>
   )

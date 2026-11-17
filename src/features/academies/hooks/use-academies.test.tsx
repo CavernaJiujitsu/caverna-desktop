@@ -22,9 +22,6 @@ vi.mock('@/features/academies/services/academy.service', () => ({
     createUnit: serviceMocks.createUnit,
     updateUnit: serviceMocks.updateUnit,
     removeUnit: serviceMocks.removeUnit,
-    linkPractitioner: vi.fn(),
-    listUnitPractitioners: vi.fn(),
-    unlinkPractitioner: vi.fn(),
   },
 }))
 

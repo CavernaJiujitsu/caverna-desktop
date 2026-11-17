@@ -25,9 +25,9 @@ vi.mock('@/features/schedules/hooks/use-schedules', () => ({
   }),
 }))
 
-vi.mock('@/features/academies', () => ({
-  useCaveUnits: () => ({
-    data: mutationMocks.units,
+vi.mock('@/features/management/hooks/use-scope-units', () => ({
+  useScopeUnits: () => ({
+    units: mutationMocks.units,
     isPending: false,
     isError: false,
     refetch: vi.fn(),
@@ -111,6 +111,32 @@ describe('ScheduleForm', () => {
         input: expect.objectContaining({ scope: 'all' }),
       })
     })
+  })
+
+  it('shows the series teacher from teacher.user (contract C1) when editing', () => {
+    render(
+      <ScheduleForm
+        schedule={{
+          ...schedule,
+          teacher: {
+            id: schedule.teacherId,
+            user: { name: 'Juliana Gracie' },
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Juliana Gracie')).toBeInTheDocument()
+  })
+
+  it('shows a fallback teacher label when the API omits teacher.user', () => {
+    render(
+      <ScheduleForm
+        schedule={{ ...schedule, teacher: { id: schedule.teacherId } }}
+      />,
+    )
+
+    expect(screen.getByText('Professor não informado')).toBeInTheDocument()
   })
 
   it('creates a schedule with unit and teacher selected by name', async () => {

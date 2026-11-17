@@ -3,18 +3,27 @@ import { envelopeSchema, paginatedSchema } from '@/shared/lib/api-schema'
 import {
   PLATFORM_USERS_MAX_PAGE_SIZE,
   platformUserSchema,
+  userAccessSchema,
+  type CreateManagementUserInput,
+  type GrantAccessInput,
+  type ManagementAccessRole,
   type PlatformUser,
   type PlatformUsersFilter,
   type PlatformUsersQuery,
+  type UserAccessView,
 } from '@/features/platform/schemas/user.schema'
 
 const ENDPOINTS = {
   list: '/platform/users',
   item: (id: string) => `/platform/users/${id}`,
+  access: (id: string) => `/platform/users/${id}/access`,
+  accessRole: (id: string, role: ManagementAccessRole) =>
+    `/platform/users/${id}/access/${role}`,
 } as const
 
 const userListSchema = envelopeSchema(paginatedSchema(platformUserSchema))
 const userSchema = envelopeSchema(platformUserSchema)
+const accessSchema = envelopeSchema(userAccessSchema)
 
 export type PlatformUserPage = {
   items: PlatformUser[]
@@ -87,6 +96,54 @@ export const platformUserService = {
   async remove(id: string): Promise<void> {
     try {
       await http.delete(ENDPOINTS.item(id))
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
+
+  async getAccess(id: string, signal?: AbortSignal): Promise<UserAccessView> {
+    try {
+      const { data } = await http.get<unknown>(ENDPOINTS.access(id), {
+        signal,
+      })
+      return accessSchema.parse(data).data
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
+
+  async createManagementUser(
+    input: CreateManagementUserInput,
+  ): Promise<UserAccessView> {
+    try {
+      const { data } = await http.post<unknown>(ENDPOINTS.list, input)
+      return accessSchema.parse(data).data
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
+
+  async grantAccess(
+    id: string,
+    input: GrantAccessInput,
+  ): Promise<UserAccessView> {
+    try {
+      const { data } = await http.post<unknown>(ENDPOINTS.access(id), input)
+      return accessSchema.parse(data).data
+    } catch (error) {
+      throw normalizeHttpError(error)
+    }
+  },
+
+  async revokeAccess(
+    id: string,
+    role: ManagementAccessRole,
+  ): Promise<UserAccessView> {
+    try {
+      const { data } = await http.delete<unknown>(
+        ENDPOINTS.accessRole(id, role),
+      )
+      return accessSchema.parse(data).data
     } catch (error) {
       throw normalizeHttpError(error)
     }

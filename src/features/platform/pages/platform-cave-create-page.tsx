@@ -52,7 +52,9 @@ export default function PlatformCaveCreatePage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      units: [{ name: '', address: '', neighborhood: '', latitude: 0, longitude: 0 }],
+      units: [
+        { name: '', address: '', neighborhood: '', latitude: 0, longitude: 0 },
+      ],
     },
   })
 
@@ -84,9 +86,7 @@ export default function PlatformCaveCreatePage() {
       reset()
       navigate(routes.platformCaves)
     } catch (error) {
-      notify.error(
-        messageForError(error, 'Não foi possível criar a caverna.'),
-      )
+      notify.error(messageForError(error, 'Não foi possível criar a caverna.'))
     }
   }
 
@@ -108,18 +108,24 @@ export default function PlatformCaveCreatePage() {
           Nome
           <Input aria-invalid={Boolean(errors.name)} {...register('name')} />
           {errors.name && (
-            <span className="text-xs text-destructive">{errors.name.message}</span>
+            <span className="text-xs text-destructive">
+              {errors.name.message}
+            </span>
           )}
         </label>
 
         <div>
           <h2 className="text-lg font-semibold">Unidades</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Informe ao menos uma unidade. A caverna e as unidades são criadas juntas.
+            Informe ao menos uma unidade. A caverna e as unidades são criadas
+            juntas.
           </p>
           <div className="mt-3 space-y-3">
             {units.map((_unit, index) => (
-              <div key={index} className="rounded-lg border border-border bg-card p-4">
+              <div
+                key={index}
+                className="rounded-lg border border-border bg-card p-4"
+              >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <span className="text-sm font-semibold text-muted-foreground">
                     Unidade {index + 1}
@@ -131,7 +137,9 @@ export default function PlatformCaveCreatePage() {
                     disabled={units.length <= 1}
                     onClick={() => removeUnit(index)}
                   >
-                    {units.length <= 1 ? null : <Trash2 className="size-4" aria-hidden="true" />}
+                    {units.length <= 1 ? null : (
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    )}
                   </Button>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
@@ -142,7 +150,9 @@ export default function PlatformCaveCreatePage() {
                       {...register(`units.${index}.name`)}
                     />
                     {errors.units?.[index]?.name && (
-                      <span className="text-xs text-destructive">{errors.units[index].name.message}</span>
+                      <span className="text-xs text-destructive">
+                        {errors.units[index].name.message}
+                      </span>
                     )}
                   </label>
                   <label className="grid gap-2 text-sm font-medium">
@@ -162,7 +172,9 @@ export default function PlatformCaveCreatePage() {
                       {...register(`units.${index}.latitude`)}
                     />
                     {errors.units?.[index]?.latitude && (
-                      <span className="text-xs text-destructive">{errors.units[index].latitude.message}</span>
+                      <span className="text-xs text-destructive">
+                        {errors.units[index].latitude.message}
+                      </span>
                     )}
                   </label>
                   <label className="grid gap-2 text-sm font-medium">
@@ -174,7 +186,9 @@ export default function PlatformCaveCreatePage() {
                       {...register(`units.${index}.longitude`)}
                     />
                     {errors.units?.[index]?.longitude && (
-                      <span className="text-xs text-destructive">{errors.units[index].longitude.message}</span>
+                      <span className="text-xs text-destructive">
+                        {errors.units[index].longitude.message}
+                      </span>
                     )}
                   </label>
                 </div>
@@ -193,7 +207,9 @@ export default function PlatformCaveCreatePage() {
         </div>
 
         {errors.root && (
-          <p role="alert" className="text-xs text-destructive">{errors.root.message}</p>
+          <p role="alert" className="text-xs text-destructive">
+            {errors.root.message}
+          </p>
         )}
 
         <div className="mt-6 flex items-center gap-3">
@@ -202,10 +218,15 @@ export default function PlatformCaveCreatePage() {
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || createCave.isPending || units.length === 0}
+            disabled={
+              isSubmitting || createCave.isPending || units.length === 0
+            }
           >
             {isSubmitting || createCave.isPending ? (
-              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+              <LoaderCircle
+                className="size-4 animate-spin"
+                aria-hidden="true"
+              />
             ) : null}
             Criar caverna
           </Button>

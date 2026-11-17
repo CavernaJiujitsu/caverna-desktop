@@ -1,16 +1,5 @@
-import {
-  Link,
-  useParams,
-  useNavigate,
-  useSearchParams,
-} from 'react-router-dom'
-import {
-  ArrowLeft,
-  LoaderCircle,
-  Plus,
-  RotateCcw,
-  Trash2,
-} from 'lucide-react'
+import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, LoaderCircle, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { routes } from '@/app/router/routes'
 import { ManagementShell } from '@/features/management/components/management-shell'
@@ -24,18 +13,39 @@ import {
   useUpdatePlatformCave,
 } from '@/features/platform/hooks/use-platform-caves'
 import { classService } from '@/features/classes/services/class.service'
-import type { AcademyClass } from '@/features/classes/schemas/class.schema'
+import type { ClassItem } from '@/features/classes/schemas/class.schema'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
 import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
+import { getErrorMessage } from '@/shared/lib/error-message'
 import { notify } from '@/shared/lib/notifications'
 import { AppError } from '@/shared/types/app-error'
 import { useSession } from '@/shared/session/session'
 
 function messageForError(error: unknown, fallback: string) {
   return error instanceof AppError ? error.message : fallback
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR')
+}
+
+/**
+ * Day window for the class preview: the `date` query param (YYYY-MM-DD) or
+ * today onwards, so the list shows upcoming classes instead of the oldest.
+ */
+function classWindow(date: string | null): { from: string; to?: string } {
+  if (date) {
+    const start = new Date(`${date}T00:00:00`)
+    const end = new Date(`${date}T23:59:59.999`)
+    if (!Number.isNaN(start.getTime()))
+      return { from: start.toISOString(), to: end.toISOString() }
+  }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return { from: today.toISOString() }
 }
 
 function formatTime(iso: string): string {
@@ -63,23 +73,25 @@ export default function PlatformCaveDetailPage() {
   const units = unitsQuery.data ?? []
   const admins = adminsQuery.data ?? []
 
-  const [classes, setClasses] = useState<Record<string, AcademyClass[]>>({})
+  const [classes, setClasses] = useState<Record<string, ClassItem[]>>({})
   const [classesLoading, setClassesLoading] = useState<Record<string, boolean>>(
     {},
   )
 
+  const dateParam = searchParams.get('date')
+
+  const loadedUnits = unitsQuery.data
+
   useEffect(() => {
-    if (!units.length) return
+    if (!loadedUnits?.length) return
+    const range = classWindow(dateParam)
     const controllers: AbortController[] = []
-    units.forEach((unit) => {
+    loadedUnits.forEach((unit) => {
       setClassesLoading((prev) => ({ ...prev, [unit.id]: true }))
       const ctrl = new AbortController()
       controllers.push(ctrl)
       classService
-        .list(
-          { unitId: unit.id, date: searchParams.get('date') ?? '' },
-          ctrl.signal,
-        )
+        .list({ caveUnitId: unit.id, ...range }, ctrl.signal)
         .then((items) => {
           setClasses((prev) => ({ ...prev, [unit.id]: items }))
           setClassesLoading((prev) => ({ ...prev, [unit.id]: false }))
@@ -91,7 +103,7 @@ export default function PlatformCaveDetailPage() {
     return () => {
       controllers.forEach((ctrl) => ctrl.abort())
     }
-  }, [units, searchParams.get('date')])
+  }, [loadedUnits, dateParam])
 
   async function updateCaveActive(nextActive: boolean) {
     const action = nextActive ? 'reativar' : 'desativar'
@@ -153,14 +165,19 @@ export default function PlatformCaveDetailPage() {
     await http.delete(`/caves/${caveId}/units/${unitId}`)
   }
 
-  function removeAdmin(adminId: string, name: string) {
+  async function removeAdmin(adminId: string, name: string) {
     if (
       !window.confirm(`Remover o vínculo de ${name}? A conta será preservada.`)
     )
       return
-    adminMutations.remove.mutateAsync(adminId).then(() => {
+    try {
+      await adminMutations.remove.mutateAsync(adminId)
       notify.success('Vínculo de gestor removido.')
-    })
+    } catch (error) {
+      notify.error(
+        getErrorMessage(error, 'Não foi possível remover o vínculo do gestor.'),
+      )
+    }
   }
 
   return (
@@ -220,7 +237,10 @@ export default function PlatformCaveDetailPage() {
                     disabled={caveQuery.isPending || updateCave.isPending}
                   >
                     {updateCave.isPending ? (
-                      <LoaderCircle className="size-3 animate-spin" aria-hidden="true" />
+                      <LoaderCircle
+                        className="size-3 animate-spin"
+                        aria-hidden="true"
+                      />
                     ) : cave.active ? (
                       'Desativar'
                     ) : (
@@ -238,7 +258,10 @@ export default function PlatformCaveDetailPage() {
                     disabled={caveQuery.isPending || archiveCave.isPending}
                   >
                     {archiveCave.isPending ? (
-                      <LoaderCircle className="size-3 animate-spin" aria-hidden="true" />
+                      <LoaderCircle
+                        className="size-3 animate-spin"
+                        aria-hidden="true"
+                      />
                     ) : (
                       <Trash2 className="size-3" aria-hidden="true" />
                     )}
@@ -324,10 +347,7 @@ export default function PlatformCaveDetailPage() {
                           <div>
                             <p className="font-medium">{unit.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {[
-                                unit.address,
-                                unit.neighborhood,
-                              ]
+                              {[unit.address, unit.neighborhood]
                                 .filter(Boolean)
                                 .join(' · ') || 'Endereço não informado'}
                             </p>
@@ -338,7 +358,10 @@ export default function PlatformCaveDetailPage() {
                                   : 'bg-amber/10 text-amber-foreground border border-amber/20'
                               }`}
                             >
-                              <span className="size-2 fill-current" aria-hidden="true" />
+                              <span
+                                className="size-2 fill-current"
+                                aria-hidden="true"
+                              />
                               {unit.active ? 'Ativa' : 'Inativa'}
                             </span>
                           </div>
@@ -358,7 +381,10 @@ export default function PlatformCaveDetailPage() {
                         </div>
                         <div className="border-t border-border pt-3">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="size-4 text-muted-foreground" aria-hidden="true" />
+                            <span
+                              className="size-4 text-muted-foreground"
+                              aria-hidden="true"
+                            />
                             <span className="text-sm font-semibold">
                               Aulas ({unitClasses.length})
                             </span>
@@ -375,10 +401,10 @@ export default function PlatformCaveDetailPage() {
                               {unitClasses.map((classItem) => (
                                 <li key={classItem.id} className="p-3">
                                   <p className="text-sm font-medium">
-                                    {classItem.teacherName}
+                                    {classItem.teacherName ?? 'Professor'}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {classItem.date} ·
+                                    {formatDate(classItem.startsAt)} ·
                                     {formatTime(classItem.startsAt)} –
                                     {formatTime(classItem.endsAt)}
                                   </p>

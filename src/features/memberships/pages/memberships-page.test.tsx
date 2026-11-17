@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MembershipsPage from '@/features/memberships/pages/memberships-page'
 import { useSession } from '@/shared/session/session'
 import { SessionProvider } from '@/shared/session/session-context'
@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   usePlatformCaves: vi.fn(),
   useStudentMemberships: vi.fn(),
   useStudentMembershipMutations: vi.fn(),
+  usePractitionerSearch: vi.fn(),
+  usePractitionerList: vi.fn(),
 }))
 
 vi.mock('@/features/academies/hooks/use-academies', () => ({
@@ -21,6 +23,11 @@ vi.mock('@/features/academies/hooks/use-academies', () => ({
 
 vi.mock('@/features/platform/hooks/use-platform-caves', () => ({
   usePlatformCaves: mocks.usePlatformCaves,
+}))
+
+vi.mock('@/features/practitioners/hooks/use-practitioners', () => ({
+  usePractitionerSearch: mocks.usePractitionerSearch,
+  usePractitionerList: mocks.usePractitionerList,
 }))
 
 vi.mock('@/features/memberships/hooks/use-memberships', () => ({
@@ -39,6 +46,36 @@ const archivedUnit = {
   name: 'Unidade Arquivada',
   neighborhood: 'Norte',
   active: false,
+}
+
+// One item of GET /memberships/students/cave-units/:id/practitioners, copied
+// from the local API (17/11).
+const rosterMembership = {
+  id: 'c1bd028d-e338-4507-9d63-fc9141754841',
+  createdAt: '2026-11-17T03:36:50.830Z',
+  updatedAt: '2026-11-17T03:36:50.830Z',
+  createdBy: null,
+  active: true,
+  joinedAt: '2026-11-17T03:36:50.829Z',
+  practitioner: {
+    id: '03ab11c3-5b0e-4d8e-b60d-1cf7887144b0',
+    createdAt: '2026-11-17T03:36:50.825Z',
+    updatedAt: '2026-11-17T03:36:50.825Z',
+    createdBy: null,
+    age: null,
+    latitude: null,
+    longitude: null,
+    user: {
+      id: 'fd00ffe1-3637-4ecd-92f6-bd4109acb53f',
+      createdAt: '2026-11-17T03:36:50.819Z',
+      updatedAt: '2026-11-17T09:23:47.897Z',
+      createdBy: null,
+      name: 'Aluno Demo',
+      email: 'aluno.demo@caverna.com',
+      role: 'STUDENT',
+      photoKey: null,
+    },
+  },
 }
 
 function SessionBootstrap({ context }: { context: ManagementContext }) {
@@ -104,6 +141,73 @@ beforeEach(() => {
     link: { isPending: false, mutateAsync: vi.fn() },
     unlink: { isPending: false, mutateAsync: vi.fn() },
   })
+  mocks.usePractitionerList.mockReturnValue({
+    isPending: false,
+    isError: false,
+    data: {
+      items: [
+        {
+          id: 'practitioner-9',
+          user: { id: 'user-9', name: 'Aluno Geral', email: 'geral@caverna.com' },
+          currentBelt: { id: 'belt-blue', name: 'Azul' },
+          units: [
+            {
+              id: 'unit-active',
+              name: 'Unidade Centro',
+              caveId: 'cave-confirmed',
+              caveName: 'Minha caverna',
+            },
+          ],
+        },
+        {
+          id: 'practitioner-10',
+          user: { id: 'user-10', name: 'Aluno Solto', email: 'solto@caverna.com' },
+          currentBelt: null,
+          units: [],
+        },
+      ],
+      page: 1,
+      totalPages: 1,
+      total: 2,
+    },
+    refetch: vi.fn(),
+  })
+  mocks.usePractitionerSearch.mockReturnValue({
+    isPending: false,
+    isError: false,
+    data: [
+      {
+        id: 'practitioner-1',
+        user: { id: 'user-2', name: 'Aluna Demo', email: 'aluna@caverna.com' },
+      },
+    ],
+  })
+})
+
+it('links a student found by name instead of a typed UUID', async () => {
+  const link = vi.fn().mockResolvedValue(undefined)
+  mocks.useStudentMembershipMutations.mockReturnValue({
+    link: { isPending: false, mutateAsync: link },
+    unlink: { isPending: false, mutateAsync: vi.fn() },
+  })
+  renderPage(caveAdminContext)
+
+  await userEvent.selectOptions(
+    await screen.findByRole('combobox', { name: 'Unidade' }),
+    'unit-active',
+  )
+  await userEvent.type(
+    screen.getByLabelText('Buscar aluno por nome ou e-mail'),
+    'Aluna',
+  )
+  await userEvent.click(await screen.findByRole('button', { name: 'Vincular' }))
+
+  await waitFor(() =>
+    expect(link).toHaveBeenCalledWith({
+      practitionerId: 'practitioner-1',
+      caveUnitId: 'unit-active',
+    }),
+  )
 })
 
 it('lists active units in a dropdown and loads students when one is selected', async () => {
@@ -144,16 +248,47 @@ it('uses only caves returned to the global administrator', async () => {
     detail: '',
   })
 
-  await waitFor(() =>
-    expect(mocks.useAllManagedCaveUnits).toHaveBeenLastCalledWith(
-      'cave-platform',
-    ),
-  )
+  // No cave filter at first: every student of the network is listed.
+  expect(await screen.findByText('Aluno Geral')).toBeInTheDocument()
+  expect(mocks.usePractitionerList).toHaveBeenLastCalledWith({
+    page: 1,
+    search: undefined,
+    caveId: undefined,
+  })
   await userEvent.selectOptions(
     screen.getByRole('combobox', { name: 'Caverna' }),
     'cave-platform',
   )
   expect(mocks.useAllManagedCaveUnits).toHaveBeenLastCalledWith('cave-platform')
+  await waitFor(() =>
+    expect(mocks.usePractitionerList).toHaveBeenLastCalledWith({
+      page: 1,
+      search: undefined,
+      caveId: 'cave-platform',
+    }),
+  )
+})
+
+it('lists every student of the scope with belt and units when no unit is chosen', async () => {
+  renderPage(caveAdminContext)
+
+  expect(await screen.findByText('Aluno Geral')).toBeInTheDocument()
+  expect(screen.getByText('Azul')).toBeInTheDocument()
+  expect(screen.getByText('Unidade Centro')).toBeInTheDocument()
+  expect(screen.getByText('Sem faixa')).toBeInTheDocument()
+  expect(screen.getByText('Sem unidade')).toBeInTheDocument()
+  expect(mocks.usePractitionerList).toHaveBeenLastCalledWith({
+    page: 1,
+    search: undefined,
+    caveId: 'cave-confirmed',
+  })
+
+  await userEvent.selectOptions(
+    screen.getByRole('combobox', { name: 'Unidade' }),
+    'unit-active',
+  )
+  expect(screen.queryByText('Aluno Geral')).not.toBeInTheDocument()
+  expect(mocks.useStudentMemberships).toHaveBeenLastCalledWith('unit-active')
 })
 
 it('shows loading and API errors for the available unit list', async () => {
@@ -187,4 +322,57 @@ it('shows loading and API errors for the available unit list', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Não foi possível carregar as unidades.',
   )
+})
+
+describe('"Validar faixa" shortcut', () => {
+  beforeEach(() => {
+    mocks.useStudentMemberships.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: [rosterMembership],
+      refetch: vi.fn(),
+    })
+  })
+
+  it('links to the evaluations page in a cave admin context', async () => {
+    renderPage(caveAdminContext)
+
+    await userEvent.selectOptions(
+      await screen.findByRole('combobox', { name: 'Unidade' }),
+      'unit-active',
+    )
+
+    const roster = screen.getByRole('list', { name: 'Alunos da unidade' })
+    expect(within(roster).getByText('Aluno Demo')).toBeInTheDocument()
+    expect(
+      within(roster).getByRole('link', { name: 'Validar faixa' }),
+    ).toHaveAttribute('href', '/evaluations')
+  })
+
+  it('is hidden in the platform context, which cannot open the evaluations page', async () => {
+    renderPage({
+      id: 'platform:global',
+      role: 'platform',
+      label: 'Administração global',
+      detail: '',
+    })
+
+    await userEvent.selectOptions(
+      await screen.findByRole('combobox', { name: 'Caverna' }),
+      'cave-platform',
+    )
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Unidade' }),
+      'unit-active',
+    )
+
+    const roster = screen.getByRole('list', { name: 'Alunos da unidade' })
+    expect(within(roster).getByText('Aluno Demo')).toBeInTheDocument()
+    expect(
+      within(roster).getByRole('button', { name: 'Desvincular' }),
+    ).toBeInTheDocument()
+    expect(
+      within(roster).queryByRole('link', { name: 'Validar faixa' }),
+    ).not.toBeInTheDocument()
+  })
 })

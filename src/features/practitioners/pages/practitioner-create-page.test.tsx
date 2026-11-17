@@ -64,7 +64,7 @@ beforeEach(() => {
   })
 })
 
-it('exibe o form de cadastro com endereço e coordenadas', () => {
+it('exibe o form de cadastro com conta e coordenadas opcionais', () => {
   renderPage(caveAdminContext)
 
   expect(
@@ -74,13 +74,9 @@ it('exibe o form de cadastro com endereço e coordenadas', () => {
   expect(screen.getByLabelText('E-mail')).toBeInTheDocument()
   expect(screen.getByLabelText('Senha')).toBeInTheDocument()
   expect(screen.getByLabelText('Confirmar senha')).toBeInTheDocument()
-  expect(screen.getByLabelText('Idade (opcional)')).toBeInTheDocument()
-  expect(screen.getByLabelText('Logradouro')).toBeInTheDocument()
-  expect(screen.getByLabelText('Número')).toBeInTheDocument()
-  expect(screen.getByLabelText('Bairro')).toBeInTheDocument()
-  expect(screen.getByLabelText('Cidade')).toBeInTheDocument()
   expect(screen.getByLabelText('Latitude')).toBeInTheDocument()
   expect(screen.getByLabelText('Longitude')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Logradouro')).not.toBeInTheDocument()
   expect(
     screen.getByRole('button', { name: 'Cadastrar aluno' }),
   ).toBeInTheDocument()
@@ -91,12 +87,8 @@ it('cadastra o aluno com dados obrigatórios preenchidos', async () => {
 
   await userEvent.type(screen.getByLabelText('Nome completo'), 'Aluno Teste')
   await userEvent.type(screen.getByLabelText('E-mail'), 'aluno@caverna.com')
-  await userEvent.type(screen.getByLabelText('Senha'), 'senha123')
-  await userEvent.type(screen.getByLabelText('Confirmar senha'), 'senha123')
-  await userEvent.type(screen.getByLabelText('Logradouro'), 'Rua das Pedras')
-  await userEvent.type(screen.getByLabelText('Número'), '123')
-  await userEvent.type(screen.getByLabelText('Bairro'), 'Centro')
-  await userEvent.type(screen.getByLabelText('Cidade'), 'Rio de Janeiro')
+  await userEvent.type(screen.getByLabelText('Senha'), 'senha1234')
+  await userEvent.type(screen.getByLabelText('Confirmar senha'), 'senha1234')
 
   await userEvent.click(screen.getByRole('button', { name: 'Cadastrar aluno' }))
 
@@ -104,18 +96,18 @@ it('cadastra o aluno com dados obrigatórios preenchidos', async () => {
     expect(mocks.useCreatePractitioner().mutateAsync).toHaveBeenCalledWith({
       name: 'Aluno Teste',
       email: 'aluno@caverna.com',
-      password: 'senha123',
+      password: 'senha1234',
     }),
   )
 })
 
-it('exibe erro de validação quando endereço obrigatório não é preenchido', async () => {
+it('exibe erro de validação quando os dados obrigatórios não são preenchidos', async () => {
   renderPage(caveAdminContext)
 
   await userEvent.click(screen.getByRole('button', { name: 'Cadastrar aluno' }))
 
   await waitFor(() =>
-    expect(screen.getByText('Informe o endereço.')).toBeInTheDocument(),
+    expect(screen.getByText('Informe o nome do aluno.')).toBeInTheDocument(),
   )
   expect(mocks.useCreatePractitioner().mutateAsync).not.toHaveBeenCalled()
 })

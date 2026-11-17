@@ -1,15 +1,15 @@
-import { LoaderCircle, Search, Trash2, UserRound } from 'lucide-react'
+import { Search, UserPlus, UserRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { ManagementShell } from '@/features/management/components/management-shell'
+import { ManagementUserForm } from '@/features/platform/components/access-forms'
+import { RoleBadges } from '@/features/platform/components/role-badges'
+import { UserAccessPanel } from '@/features/platform/components/user-access-panel'
 import {
   useAllPlatformUsers,
-  usePlatformUser,
   usePlatformUsers,
-  useRemovePlatformUser,
 } from '@/features/platform/hooks/use-platform-users'
 import {
   PLATFORM_USERS_MAX_PAGE_SIZE,
-  type PlatformUser,
   type PlatformUsersFilter,
 } from '@/features/platform/schemas/user.schema'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
@@ -18,10 +18,10 @@ import { LoadingState } from '@/shared/components/feedback/loading-state'
 import { PageHeader } from '@/shared/components/layout/page-header'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
-import { notify } from '@/shared/lib/notifications'
-import { AppError } from '@/shared/types/app-error'
+import { getErrorMessage } from '@/shared/lib/error-message'
 import { useSession } from '@/shared/session/session'
-import { USER_ROLES, type UserRole } from '@/shared/types/user-role'
+import { AppError } from '@/shared/types/app-error'
+import { ROLE_LABELS, type UserRole } from '@/shared/types/user-role'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, PLATFORM_USERS_MAX_PAGE_SIZE] as const
 const ALL_PAGE_SIZE = 'all' as const
@@ -30,16 +30,12 @@ type PageSize = (typeof PAGE_SIZE_OPTIONS)[number] | typeof ALL_PAGE_SIZE
 const selectClassName =
   'h-9 rounded-md border border-input bg-transparent px-3 text-base shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30'
 
-const roleLabel: Record<UserRole, string> = {
-  STUDENT: 'Aluno',
-  TEACHER: 'Professor',
-  CAVE_ADMIN: 'Gestor de caverna',
-  ADMIN: 'Administrador',
-}
+// role=ADMIN also matches ROOT on the backend, so ROOT is not a filter option.
+const FILTER_ROLES: UserRole[] = ['STUDENT', 'TEACHER', 'CAVE_ADMIN', 'ADMIN']
 
-const roleOptions = USER_ROLES.map((role) => ({
+const roleOptions = FILTER_ROLES.map((role) => ({
   value: role,
-  label: roleLabel[role],
+  label: ROLE_LABELS[role],
 }))
 
 function parsePageSize(value: string): PageSize {
@@ -51,163 +47,13 @@ function parsePageSize(value: string): PageSize {
 function messageForLoadError(error: unknown): string {
   if (error instanceof AppError && error.kind === 'forbidden')
     return 'Somente administradores da plataforma podem consultar usuários.'
-  return 'Não foi possível carregar os usuários.'
-}
-
-function messageForDeleteError(error: unknown): string {
-  if (error instanceof AppError) {
-    if (error.kind === 'forbidden')
-      return 'Somente administradores da plataforma podem remover usuários.'
-    if (error.kind === 'not-found') return 'Usuário não encontrado.'
-    if (error.kind === 'unknown' && error.status === 409)
-      return 'Este usuário ainda possui vínculos e não pode ser removido agora.'
-    if (error.kind === 'network' || error.kind === 'timeout')
-      return 'Não foi possível falar com o servidor. Tente novamente.'
-  }
-  return 'Não foi possível remover o usuário.'
-}
-
-function formatDate(value?: string): string {
-  if (!value) return 'Não informado'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(date)
-}
-
-function DeleteUserPanel({
-  user,
-  onDeleted,
-}: {
-  user: PlatformUser
-  onDeleted: () => void
-}) {
-  const removeUser = useRemovePlatformUser()
-  const [confirmation, setConfirmation] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const confirmed = confirmation === user.email
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!confirmed) return
-    setError(null)
-    try {
-      await removeUser.mutateAsync(user.id)
-      notify.success('Usuário removido.')
-      onDeleted()
-    } catch (mutationError) {
-      setError(messageForDeleteError(mutationError))
-    }
-  }
-
-  return (
-    <form
-      className="mt-5 rounded-lg border border-destructive/40 bg-destructive/5 p-4"
-      onSubmit={(event) => void submit(event)}
-      noValidate
-    >
-      <h3 className="text-sm font-semibold text-destructive">
-        Remover definitivamente
-      </h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Esta ação remove a conta e os vínculos em cascata. Digite o e-mail exato{' '}
-        <strong>{user.email}</strong> para confirmar.
-      </p>
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        <label className="grid flex-1 gap-2 text-sm font-medium">
-          Confirmação
-          <Input
-            value={confirmation}
-            autoComplete="off"
-            aria-invalid={Boolean(error)}
-            onChange={(event) => setConfirmation(event.target.value)}
-          />
-        </label>
-        <Button
-          type="submit"
-          variant="destructive"
-          disabled={!confirmed || removeUser.isPending}
-        >
-          {removeUser.isPending ? (
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Trash2 className="size-4" aria-hidden="true" />
-          )}
-          Remover usuário
-        </Button>
-      </div>
-      {error && (
-        <p role="alert" className="mt-3 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-    </form>
-  )
-}
-
-function UserDetail({
-  userId,
-  onClose,
-  onDeleted,
-}: {
-  userId: string
-  onClose: () => void
-  onDeleted: () => void
-}) {
-  const user = usePlatformUser(userId)
-
-  return (
-    <section
-      className="rounded-xl border border-border bg-card p-5"
-      aria-labelledby="user-detail-title"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 id="user-detail-title" className="text-lg font-semibold">
-          Detalhes do usuário
-        </h2>
-        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-          Fechar
-        </Button>
-      </div>
-      {user.isPending ? (
-        <LoadingState label="Carregando usuário…" />
-      ) : user.isError ? (
-        <ErrorState
-          message={messageForLoadError(user.error)}
-          onRetry={() => void user.refetch()}
-          retryLabel="Tentar novamente"
-        />
-      ) : (
-        <div className="mt-4">
-          <dl className="grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-muted-foreground">Nome</dt>
-              <dd className="font-medium">{user.data.name}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">E-mail</dt>
-              <dd className="font-medium">{user.data.email}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Perfil</dt>
-              <dd className="font-medium">{roleLabel[user.data.role]}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Criado em</dt>
-              <dd className="font-medium">{formatDate(user.data.createdAt)}</dd>
-            </div>
-          </dl>
-          <DeleteUserPanel user={user.data} onDeleted={onDeleted} />
-        </div>
-      )}
-    </section>
-  )
+  return getErrorMessage(error, 'Não foi possível carregar os usuários.')
 }
 
 export default function PlatformUsersPage() {
-  const { selectedContext } = useSession()
+  const { session } = useSession()
+  const actorIsRoot = session?.roles.includes('ROOT') ?? false
+  const [creating, setCreating] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
@@ -218,9 +64,6 @@ export default function PlatformUsersPage() {
   const filters: PlatformUsersFilter = {
     ...(search ? { search } : {}),
     ...(role ? { role } : {}),
-    ...(selectedContext?.role === 'academy' && selectedContext?.caveId
-      ? { caveId: selectedContext.caveId }
-      : {}),
   }
   const isAll = pageSize === ALL_PAGE_SIZE
   const users = usePlatformUsers(
@@ -254,7 +97,7 @@ export default function PlatformUsersPage() {
   }
 
   function applyRole(value: string) {
-    setRole(USER_ROLES.find((item) => item === value) ?? '')
+    setRole(FILTER_ROLES.find((item) => item === value) ?? '')
     setPage(1)
     setSelectedId(null)
   }
@@ -275,10 +118,35 @@ export default function PlatformUsersPage() {
 
   return (
     <ManagementShell>
-      <PageHeader
-        title="Usuários"
-        description="Contas da plataforma, com busca, filtros e remoção protegida."
-      />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          title="Usuários e acessos"
+          description="Consulte contas, conceda ou revogue acessos de gestão e crie usuários de gestão."
+        />
+        {!creating && (
+          <Button
+            type="button"
+            onClick={() => {
+              setCreating(true)
+              setSelectedId(null)
+            }}
+          >
+            <UserPlus className="size-4" aria-hidden="true" />
+            Novo usuário de gestão
+          </Button>
+        )}
+      </div>
+
+      {creating && (
+        <ManagementUserForm
+          actorIsRoot={actorIsRoot}
+          onCancel={() => setCreating(false)}
+          onCreated={(userId) => {
+            setCreating(false)
+            setSelectedId(userId)
+          }}
+        />
+      )}
 
       <section
         className="mt-6 rounded-xl border border-border bg-card p-4"
@@ -345,7 +213,8 @@ export default function PlatformUsersPage() {
 
       {selectedId && (
         <div className="mt-6">
-          <UserDetail
+          <UserAccessPanel
+            key={selectedId}
             userId={selectedId}
             onClose={() => setSelectedId(null)}
             onDeleted={() => {
@@ -403,20 +272,24 @@ export default function PlatformUsersPage() {
                       className="size-5 text-muted-foreground"
                       aria-hidden="true"
                     />
-                    <div>
+                    <div className="grid gap-1">
                       <p className="font-medium">{user.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {user.email} · {roleLabel[user.role]}
+                        {user.email}
                       </p>
+                      <RoleBadges roles={user.roles} />
                     </div>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedId(user.id)}
+                    onClick={() => {
+                      setCreating(false)
+                      setSelectedId(user.id)
+                    }}
                   >
-                    Ver detalhes
+                    Ver acessos
                   </Button>
                 </li>
               ))}

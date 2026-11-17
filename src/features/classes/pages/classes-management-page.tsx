@@ -1,268 +1,179 @@
+import { CalendarDays, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
-import { CalendarDays, ChevronRight, Plus, Users } from 'lucide-react'
-import { useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
+import { useSearchParams } from 'react-router-dom'
+import { ManagementShell } from '@/features/management/components/management-shell'
+import { ClassAttendancePanel } from '@/features/classes/components/class-attendance-panel'
+import { ClassForm } from '@/features/classes/components/class-form'
+import { useClassScope } from '@/features/classes/hooks/use-class-scope'
+import {
+  useClass,
+  useClassMutations,
+  useClasses,
+} from '@/features/classes/hooks/use-classes'
+import {
+  CLASS_TYPES,
+  CLASS_TYPE_LABELS,
+  type ClassItem,
+  type ClassType,
+} from '@/features/classes/schemas/class.schema'
+import {
+  addDays,
+  endOfDayIso,
+  formatClassDate,
+  formatTime,
+  startOfDayIso,
+  toDateInputValue,
+} from '@/features/classes/services/class-dates'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
 import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
-import { ManagementShell } from '@/features/management/components/management-shell'
-import {
-  classInputSchema,
-  type AcademyClass,
-  type ClassInput,
-} from '@/features/classes/schemas/class.schema'
-import { useClasses, useSaveClass } from '@/features/classes/hooks/use-classes'
-import { useClassCatalog } from '@/features/classes/hooks/use-class-catalog'
+import { Button } from '@/shared/components/ui/button'
+import { Input } from '@/shared/components/ui/input'
+import { getErrorMessage } from '@/shared/lib/error-message'
 import { notify } from '@/shared/lib/notifications'
-import { useSession } from '@/shared/session/session'
 
-const today = new Date().toISOString().slice(0, 10)
+const selectClassName =
+  'h-10 rounded-md border border-input bg-background px-3 text-sm'
 
-function labelForType(type: AcademyClass['type']) {
-  return { regular: 'Regular', validation: 'Validação', exam: 'Exame' }[type]
+type Filters = {
+  unitId: string
+  teacherId: string
+  type: ClassType | ''
+  fromDate: string
+  toDate: string
 }
 
-function ClassForm({
-  value,
-  onCancel,
-  onSaved,
-}: {
-  value: AcademyClass | null
-  onCancel: () => void
-  onSaved: () => void
-}) {
-  const mutation = useSaveClass()
-  const catalog = useClassCatalog()
-  const units = catalog.units.data ?? []
-  const teachers = catalog.teachers.data ?? []
-  type FormValues = z.input<typeof classInputSchema>
-  const form = useForm<FormValues, unknown, ClassInput>({
-    resolver: zodResolver(classInputSchema),
-    defaultValues: value
-      ? {
-          unitId: value.unitId,
-          teacherId: value.teacherId,
-          date: value.date,
-          startsAt: value.startsAt,
-          endsAt: value.endsAt,
-          capacity: value.capacity,
-          type: value.type,
-          eligibleBelts: value.eligibleBelts,
-          movementIds: value.movements.map((movement) => movement.id),
-        }
-      : {
-          unitId: units[0]?.id ?? '',
-          teacherId: teachers[0]?.id ?? '',
-          date: today,
-          startsAt: '19:00',
-          endsAt: '20:30',
-          capacity: 20,
-          type: 'regular',
-          eligibleBelts: ['white'],
-          movementIds: [],
-        },
-  })
-  const selectedBelts = useWatch({
-    control: form.control,
-    name: 'eligibleBelts',
-  })
+function catalogsErrorMessage(unitsError: boolean, teachersError: boolean) {
+  const failed =
+    unitsError && teachersError
+      ? 'as unidades e os professores'
+      : unitsError
+        ? 'as unidades'
+        : 'os professores'
+  return `Não foi possível carregar ${failed}. Os filtros e o cadastro de aulas ficam incompletos até carregar.`
+}
 
-  async function submit(input: ClassInput) {
-    try {
-      await mutation.mutateAsync({ id: value?.id, input })
-      notify.success(value ? 'Aula atualizada.' : 'Aula criada.')
-      onSaved()
-    } catch (error) {
-      notify.error(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível salvar a aula.',
-      )
-    }
+function initialFilters(): Filters {
+  const today = new Date()
+  return {
+    unitId: '',
+    teacherId: '',
+    type: '',
+    fromDate: toDateInputValue(today),
+    toDate: toDateInputValue(addDays(today, 7)),
   }
-
-  return (
-    <section
-      className="rounded-xl border border-border bg-card p-6"
-      aria-labelledby="class-form-title"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
-            {value ? 'Editar encontro' : 'Nova aula'}
-          </p>
-          <h2 id="class-form-title" className="mt-2 text-2xl font-semibold">
-            {value ? value.unitName : 'Criar aula'}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Defina a unidade, o professor e as vagas deste encontro.
-          </p>
-        </div>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          Fechar
-        </Button>
-      </div>
-      <form
-        className="mt-6 grid gap-5"
-        onSubmit={form.handleSubmit(submit)}
-        noValidate
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium">
-            Unidade
-            <select
-              className="h-10 rounded-md border border-input bg-background px-3"
-              {...form.register('unitId')}
-            >
-              <option value="">Selecione</option>
-              {units.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.name}
-                </option>
-              ))}
-            </select>
-            {form.formState.errors.unitId && (
-              <span className="text-xs text-destructive">
-                {form.formState.errors.unitId.message}
-              </span>
-            )}
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Professor
-            <select
-              className="h-10 rounded-md border border-input bg-background px-3"
-              {...form.register('teacherId')}
-            >
-              <option value="">Selecione</option>
-              {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.name}
-                </option>
-              ))}
-            </select>
-            {form.formState.errors.teacherId && (
-              <span className="text-xs text-destructive">
-                {form.formState.errors.teacherId.message}
-              </span>
-            )}
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Data
-            <Input type="date" {...form.register('date')} />
-            {form.formState.errors.date && (
-              <span className="text-xs text-destructive">
-                {form.formState.errors.date.message}
-              </span>
-            )}
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Tipo
-            <select
-              className="h-10 rounded-md border border-input bg-background px-3"
-              {...form.register('type')}
-            >
-              <option value="regular">Regular</option>
-              <option value="validation">Validação</option>
-              <option value="exam">Exame</option>
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Início
-            <Input type="time" {...form.register('startsAt')} />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Fim
-            <Input type="time" {...form.register('endsAt')} />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Capacidade
-            <Input type="number" min="1" {...form.register('capacity')} />
-            {form.formState.errors.capacity && (
-              <span className="text-xs text-destructive">
-                {form.formState.errors.capacity.message}
-              </span>
-            )}
-          </label>
-        </div>
-        <fieldset>
-          <legend className="text-sm font-medium">Faixas elegíveis</legend>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(['white', 'blue', 'purple', 'brown', 'black'] as const).map(
-              (belt) => (
-                <label
-                  key={belt}
-                  className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedBelts.includes(belt)}
-                    onChange={(event) =>
-                      form.setValue(
-                        'eligibleBelts',
-                        event.target.checked
-                          ? [...selectedBelts, belt]
-                          : selectedBelts.filter((item) => item !== belt),
-                        { shouldValidate: true },
-                      )
-                    }
-                  />
-                  {belt}
-                </label>
-              ),
-            )}
-          </div>
-          {form.formState.errors.eligibleBelts && (
-            <p className="mt-2 text-xs text-destructive">
-              {form.formState.errors.eligibleBelts.message}
-            </p>
-          )}
-        </fieldset>
-        <div className="flex flex-wrap justify-end gap-3">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending
-              ? 'Salvando…'
-              : value
-                ? 'Salvar alterações'
-                : 'Criar aula'}
-          </Button>
-        </div>
-      </form>
-    </section>
-  )
 }
 
 export default function ClassesManagementPage() {
-  const { selectedContext, session } = useSession()
-  const isTeacher = selectedContext?.role === 'teacher'
-  const [filters, setFilters] = useState({
-    unitId: '',
-    date: today,
-    teacherId: '',
-  })
-  const [selected, setSelected] = useState<AcademyClass | null>(null)
-  const [editing, setEditing] = useState<AcademyClass | null | undefined>(
-    undefined,
+  const scope = useClassScope()
+  const [filters, setFilters] = useState<Filters>(initialFilters)
+  const [page, setPage] = useState(1)
+  // `undefined` = form closed, `null` = creating, item = editing.
+  const [editing, setEditing] = useState<ClassItem | null | undefined>()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedClassId = searchParams.get('classId') ?? ''
+  const selectedClass = useClass(selectedClassId)
+  const { remove } = useClassMutations()
+
+  const teacherId = scope.isTeacher ? scope.ownTeacherId : filters.teacherId
+  const scopeReady = scope.isTeacher
+    ? Boolean(scope.ownTeacherId)
+    : Boolean(scope.caveId)
+  // The API scopes and paginates: academy contexts send their cave, teacher
+  // contexts their own id. Nothing is filtered on the client.
+  const query = useClasses(
+    {
+      caveId: scope.caveId || undefined,
+      caveUnitId: filters.unitId || undefined,
+      teacherId: teacherId || undefined,
+      type: filters.type || undefined,
+      from: filters.fromDate ? startOfDayIso(filters.fromDate) : undefined,
+      to: filters.toDate ? endOfDayIso(filters.toDate) : undefined,
+      page,
+    },
+    scopeReady,
   )
-  const query = useClasses({
-    ...filters,
-    ...(isTeacher && session?.teacherId
-      ? { teacherId: session.teacherId }
-      : filters.teacherId
-        ? { teacherId: filters.teacherId }
-        : {}),
-  })
-  const catalog = useClassCatalog()
-  const classUnits = catalog.units.data ?? []
-  const classTeachers = catalog.teachers.data ?? []
-  const classes = query.data ?? []
-  const selectedFresh =
-    classes.find((item) => item.id === selected?.id) ?? selected
+  const classes = query.data?.items ?? []
+  const lastPage = Math.max(query.data?.totalPages ?? 1, 1)
+  // A deletion can empty the last page; fall back to the new last one.
+  if (query.data && !query.isPlaceholderData && page > lastPage)
+    setPage(lastPage)
+  const catalogsError =
+    scopeReady && (scope.unitsError || scope.teachersError)
+
+  function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
+    setFilters((current) => ({ ...current, [key]: value }))
+    setPage(1)
+  }
+
+  function openClass(id: string) {
+    setEditing(undefined)
+    setSearchParams({ classId: id })
+  }
+
+  function closeClass() {
+    setSearchParams({})
+  }
+
+  function canManage(item: ClassItem) {
+    return !scope.isTeacher || item.teacherId === scope.ownTeacherId
+  }
+
+  async function removeClass(item: ClassItem) {
+    if (
+      !window.confirm(
+        `Excluir a aula de ${formatClassDate(item.startsAt)} em ${item.caveUnitName}?`,
+      )
+    )
+      return
+    try {
+      await remove.mutateAsync(item.id)
+      notify.success('Aula excluída.')
+      if (selectedClassId === item.id) closeClass()
+    } catch (error) {
+      notify.error(getErrorMessage(error, 'Não foi possível excluir a aula.'))
+    }
+  }
+
+  const sidePanel =
+    editing !== undefined ? (
+      <ClassForm
+        key={editing?.id ?? 'new'}
+        value={editing}
+        scope={scope}
+        onClose={() => setEditing(undefined)}
+      />
+    ) : selectedClassId ? (
+      selectedClass.isPending ? (
+        <LoadingState label="Carregando aula…" />
+      ) : selectedClass.isError ? (
+        <ErrorState
+          message={getErrorMessage(
+            selectedClass.error,
+            'Não foi possível carregar a aula.',
+          )}
+          onRetry={() => void selectedClass.refetch()}
+          retryLabel="Tentar novamente"
+        />
+      ) : (
+        <ClassAttendancePanel
+          item={selectedClass.data}
+          teacherName={scope.teacherName(
+            selectedClass.data.teacherId,
+            selectedClass.data.teacherName,
+          )}
+          isClassTeacher={
+            scope.isTeacher &&
+            selectedClass.data.teacherId === scope.ownTeacherId
+          }
+          onClose={closeClass}
+        />
+      )
+    ) : (
+      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        Selecione uma aula para abrir a chamada ou crie uma nova aula.
+      </div>
+    )
 
   return (
     <ManagementShell>
@@ -270,252 +181,261 @@ export default function ClassesManagementPage() {
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">
-              {isTeacher ? 'Professor' : 'Gestão da caverna'}
+              {scope.isTeacher ? 'Professor' : 'Gestão da caverna'}
             </p>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight">
-              {isTeacher ? 'Minhas aulas' : 'Aulas da academia'}
+              {scope.isTeacher ? 'Minhas aulas' : 'Aulas da academia'}
             </h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">
-              {isTeacher
-                ? 'Consulte suas aulas, inscritos e registre a presença.'
-                : 'Crie encontros com data, professor e vagas definidas.'}
+              Crie aulas, defina as faixas elegíveis e faça a chamada dos
+              inscritos.
             </p>
           </div>
-          {!isTeacher && (
-            <Button
-              onClick={() => {
-                setSelected(null)
-                setEditing(null)
-              }}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Criar aula
-            </Button>
-          )}
+          <Button
+            type="button"
+            onClick={() => {
+              closeClass()
+              setEditing(null)
+            }}
+            disabled={!scopeReady}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Criar aula
+          </Button>
         </header>
+
+        {!scopeReady && (
+          <div className="mt-6">
+            <ErrorState message="O contexto selecionado não informa uma caverna ou professor. Troque de contexto e tente novamente." />
+          </div>
+        )}
+
         <section
           className="mt-8 rounded-xl border border-border bg-card p-4"
           aria-label="Filtros de aulas"
         >
-          <div className="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto]">
+          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+            <label className="grid gap-2 text-sm font-medium">
+              De
+              <Input
+                type="date"
+                value={filters.fromDate}
+                onChange={(event) =>
+                  updateFilter('fromDate', event.target.value)
+                }
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Até
+              <Input
+                type="date"
+                value={filters.toDate}
+                onChange={(event) => updateFilter('toDate', event.target.value)}
+              />
+            </label>
             <label className="grid gap-2 text-sm font-medium">
               Unidade
               <select
-                className="h-10 rounded-md border border-input bg-background px-3"
+                className={selectClassName}
                 value={filters.unitId}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    unitId: event.target.value,
-                  }))
-                }
+                onChange={(event) => updateFilter('unitId', event.target.value)}
               >
-                <option value="">Todas as unidades</option>
-                {classUnits.map((unit) => (
+                <option value="">Todas</option>
+                {scope.units.map((unit) => (
                   <option key={unit.id} value={unit.id}>
                     {unit.name}
                   </option>
                 ))}
               </select>
             </label>
+            {!scope.isTeacher && (
+              <label className="grid gap-2 text-sm font-medium">
+                Professor
+                <select
+                  className={selectClassName}
+                  value={filters.teacherId}
+                  onChange={(event) =>
+                    updateFilter('teacherId', event.target.value)
+                  }
+                >
+                  <option value="">Todos</option>
+                  {scope.teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="grid gap-2 text-sm font-medium">
-              Data
-              <Input
-                type="date"
-                value={filters.date}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    date: event.target.value,
-                  }))
-                }
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Professor
+              Tipo
               <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                value={filters.teacherId}
+                className={selectClassName}
+                value={filters.type}
                 onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    teacherId: event.target.value,
-                  }))
+                  updateFilter('type', event.target.value as ClassType | '')
                 }
               >
-                <option value="">Todos os professores</option>
-                {classTeachers.map((teacher) => (
-                  <option key={teacher.id} value={teacher.id}>
-                    {teacher.name}
+                <option value="">Todos</option>
+                {CLASS_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {CLASS_TYPE_LABELS[type]}
                   </option>
                 ))}
               </select>
             </label>
             <Button
+              type="button"
               className="self-end"
               variant="outline"
-              onClick={() =>
-                setFilters({ unitId: '', date: '', teacherId: '' })
-              }
+              onClick={() => {
+                setFilters(initialFilters())
+                setPage(1)
+              }}
             >
               Limpar filtros
             </Button>
           </div>
         </section>
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+
+        {catalogsError && (
+          <div className="mt-6">
+            <ErrorState
+              message={catalogsErrorMessage(
+                scope.unitsError,
+                scope.teachersError,
+              )}
+              onRetry={scope.retryCatalogs}
+              retryLabel="Tentar novamente"
+            />
+          </div>
+        )}
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <section aria-labelledby="class-list-title">
             <div className="mb-3 flex items-center justify-between">
               <h2 id="class-list-title" className="text-lg font-semibold">
-                Aulas cadastradas
+                Aulas no período
               </h2>
-              <span className="text-sm text-muted-foreground">
-                {classes.length} encontro(s)
-              </span>
+              {query.data ? (
+                <span className="text-sm text-muted-foreground">
+                  {query.data.total} aula(s)
+                </span>
+              ) : null}
             </div>
-            {query.isLoading ? (
-              <LoadingState label="Carregando encontros…" />
+            {!scopeReady ? null : query.isPending ? (
+              <LoadingState label="Carregando aulas…" />
             ) : query.isError ? (
               <ErrorState
-                message="Não foi possível carregar os encontros."
-                onRetry={() => query.refetch()}
+                message={getErrorMessage(
+                  query.error,
+                  'Não foi possível carregar as aulas.',
+                )}
+                onRetry={() => void query.refetch()}
+                retryLabel="Tentar novamente"
               />
             ) : classes.length === 0 ? (
               <EmptyState
                 title="Nenhuma aula encontrada"
-                description="Ajuste a unidade ou a data para consultar outros encontros."
+                description="Ajuste o período ou os filtros para consultar outras aulas."
               />
             ) : (
-              <div className="grid gap-3">
+              <ul className="grid gap-3" aria-label="Aulas">
                 {classes.map((item) => (
-                  <article
+                  <li
                     key={item.id}
-                    className={`rounded-xl border bg-card p-5 transition-colors ${selected?.id === item.id ? 'border-primary' : 'border-border'}`}
+                    className={`rounded-xl border bg-card p-5 ${
+                      selectedClassId === item.id
+                        ? 'border-primary'
+                        : 'border-border'
+                    }`}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <CalendarDays className="size-4" aria-hidden="true" />
-                          {item.date} · {item.startsAt}–{item.endsAt}
-                        </div>
-                        <h3 className="mt-2 text-xl font-semibold">
-                          {labelForType(item.type)} · {item.unitName}
-                        </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {item.teacherName}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold">
-                        {item.enrollments.length} de {item.capacity} vagas
-                      </span>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CalendarDays className="size-4" aria-hidden="true" />
+                      {formatClassDate(item.startsAt)} ·{' '}
+                      {formatTime(item.startsAt)}–{formatTime(item.endsAt)}
                     </div>
+                    <h3 className="mt-2 text-lg font-semibold">
+                      {CLASS_TYPE_LABELS[item.type]} · {item.caveUnitName}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {scope.teacherName(item.teacherId, item.teacherName)} ·{' '}
+                      {item.capacity} vagas
+                      {item.belts.length > 0
+                        ? ` · ${item.belts.map((belt) => belt.name).join(', ')}`
+                        : ''}
+                    </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Button
-                        variant="secondary"
+                        type="button"
                         size="sm"
-                        onClick={() => setSelected(item)}
+                        variant="secondary"
+                        onClick={() => openClass(item.id)}
                       >
                         <Users className="size-4" aria-hidden="true" />
-                        Ver inscritos
+                        Chamada
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelected(null)
-                          setEditing(item)
-                        }}
-                      >
-                        Editar{' '}
-                        <ChevronRight className="size-4" aria-hidden="true" />
-                      </Button>
+                      {canManage(item) && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              closeClass()
+                              setEditing(item)
+                            }}
+                          >
+                            <Pencil className="size-4" aria-hidden="true" />
+                            Editar
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={remove.isPending}
+                            onClick={() => void removeClass(item)}
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                            Excluir
+                          </Button>
+                        </>
+                      )}
                     </div>
-                  </article>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
-          </section>
-          {editing !== undefined ? (
-            <ClassForm
-              value={editing}
-              onCancel={() => setEditing(undefined)}
-              onSaved={() => setEditing(undefined)}
-            />
-          ) : selectedFresh ? (
-            <section
-              className="rounded-xl border border-border bg-card p-6"
-              aria-labelledby="enrollment-title"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
-                    Detalhe do encontro
-                  </p>
-                  <h2
-                    id="enrollment-title"
-                    className="mt-2 text-2xl font-semibold"
-                  >
-                    Inscritos
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {selectedFresh.date} · {selectedFresh.startsAt}–
-                    {selectedFresh.endsAt} · {selectedFresh.unitName}
-                  </p>
-                </div>
-                <Button variant="ghost" onClick={() => setSelected(null)}>
-                  Fechar
-                </Button>
-              </div>
-              <div className="mt-5 rounded-lg bg-accent p-4">
-                <p className="text-sm text-muted-foreground">Lotação atual</p>
-                <p className="mt-1 text-2xl font-semibold">
-                  {selectedFresh.enrollments.length}{' '}
-                  <span className="text-base font-normal text-muted-foreground">
-                    de {selectedFresh.capacity}
-                  </span>
-                </p>
-              </div>
-              {selectedFresh.enrollments.length === 0 ? (
-                <div className="mt-5">
-                  <EmptyState
-                    title="Nenhum inscrito"
-                    description="Este encontro ainda não possui inscrições."
-                  />
-                </div>
-              ) : (
-                <ul
-                  className="mt-5 divide-y divide-border"
-                  aria-label="Lista de inscritos"
+            {query.data && !query.isError && query.data.totalPages > 1 ? (
+              <nav
+                className="mt-4 flex items-center justify-end gap-3 text-sm"
+                aria-label="Paginação de aulas"
+              >
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={page <= 1}
+                  onClick={() => setPage((value) => value - 1)}
                 >
-                  {selectedFresh.enrollments.map((enrollment) => (
-                    <li
-                      key={enrollment.id}
-                      className="flex items-center justify-between gap-3 py-4"
-                    >
-                      <div>
-                        <p className="font-medium">{enrollment.studentName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {enrollment.belt ?? 'Sem faixa validada'} ·{' '}
-                          {enrollment.status === 'confirmed'
-                            ? 'Presença confirmada'
-                            : 'Reserva'}
-                        </p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(enrollment.enrolledAt).toLocaleDateString(
-                          'pt-BR',
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          ) : (
-            <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              Selecione um encontro para consultar os inscritos ou crie uma nova
-              aula.
-            </div>
-          )}
+                  Anterior
+                </Button>
+                <span>
+                  Página {query.data.page} de {query.data.totalPages}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={page >= query.data.totalPages}
+                  onClick={() => setPage((value) => value + 1)}
+                >
+                  Próxima
+                </Button>
+              </nav>
+            ) : null}
+          </section>
+          <div>{sidePanel}</div>
         </div>
       </div>
     </ManagementShell>

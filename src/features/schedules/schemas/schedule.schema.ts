@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import {
+  apiTeacherSummarySchema,
+  TEACHER_NAME_FALLBACK,
+} from '@/features/classes/schemas/class.schema'
 
 export const SCHEDULE_DAYS = [
   { value: 0, label: 'Domingo' },
@@ -41,14 +45,8 @@ export const scheduleSchema = z
       })
       .passthrough()
       .optional(),
-    teacher: z
-      .object({
-        id: z.string(),
-        userId: z.string().optional(),
-        name: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
+    // Contract C1 `{ id, user: { id, name } }`; without it, only the id.
+    teacher: apiTeacherSummarySchema.nullish(),
   })
   .passthrough()
 
@@ -136,6 +134,11 @@ export const scheduleUpdateResultSchema = z.object({
 })
 
 export type ScheduleUpdateResult = z.infer<typeof scheduleUpdateResultSchema>
+
+/** Teacher name from `teacher.user.name` (contract C1), with a fallback. */
+export function scheduleTeacherName(schedule: ClassSchedule): string {
+  return schedule.teacher?.user?.name ?? TEACHER_NAME_FALLBACK
+}
 
 export function timeFromSchedule(value: string): string {
   const iso = new Date(value)

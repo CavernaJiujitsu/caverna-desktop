@@ -8,41 +8,41 @@ import type { ManagementRole } from '@/shared/types/management-context'
 
 type NavigationItem = { to: string; label: string }
 
-const legacyNavigation: NavigationItem[] = [
-  { to: routes.academies, label: 'Academias' },
-  { to: routes.classes, label: 'Aulas' },
-  { to: routes.evaluations, label: 'Avaliações' },
-]
-
 const navigationByRole: Record<ManagementRole, NavigationItem[]> = {
   platform: [
     { to: routes.platformCaves, label: 'Cavernas' },
     { to: routes.units, label: 'Unidades' },
+    { to: routes.platformUsers, label: 'Usuários e acessos' },
     { to: routes.caveAdministrators, label: 'Administradores' },
     { to: routes.teachers, label: 'Professores' },
-    { to: routes.platformUsers, label: 'Usuários' },
-    { to: routes.workouts, label: 'Treinos (piloto)' },
+    { to: routes.memberships, label: 'Alunos' },
+    { to: routes.trainings, label: 'Treinos' },
   ],
   academy: [
+    { to: routes.trainings, label: 'Treinos' },
+    { to: routes.classes, label: 'Aulas' },
+    { to: routes.schedules, label: 'Horários' },
+    { to: routes.evaluations, label: 'Validações de faixa' },
     { to: routes.memberships, label: 'Alunos' },
     { to: routes.teachers, label: 'Professores' },
-    { to: routes.caveAdministrators, label: 'Administradores' },
-    { to: routes.classes, label: 'Aulas' },
     { to: routes.units, label: 'Unidades' },
-    { to: routes.evaluations, label: 'Validações de faixa' },
+    { to: routes.caveAdministrators, label: 'Administradores' },
   ],
   teacher: [
     { to: routes.classes, label: 'Minhas aulas' },
+    { to: routes.schedules, label: 'Horários' },
     { to: routes.evaluations, label: 'Validações' },
   ],
 }
 
 export function ManagementShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
-  const { clearSession, selectedContext, setSelectedContext } = useSession()
+  const { clearSession, selectedContext, setSelectedContext, session } =
+    useSession()
   const navigation = selectedContext
     ? navigationByRole[selectedContext.role]
-    : legacyNavigation
+    : []
+  const isRoot = session?.roles.includes('ROOT') ?? false
   const homeDestination = navigation[0]?.to ?? routes.management
 
   function handleExit() {
@@ -64,15 +64,25 @@ export function ManagementShell({ children }: { children: ReactNode }) {
         >
           CAVERNA
         </Link>
-        <p className="mt-6 text-sm font-medium">
+        <p className="mt-6 flex flex-wrap items-center gap-2 text-sm font-medium">
           {selectedContext?.label ?? 'Sessão autenticada'}
+          {isRoot ? (
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase text-primary-foreground">
+              Root
+            </span>
+          ) : null}
         </p>
+        {session?.user.name ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {session.user.name}
+          </p>
+        ) : null}
         {selectedContext?.detail ? (
           <p className="mt-1 text-xs text-muted-foreground">
             {selectedContext.detail}
           </p>
         ) : null}
-        <nav className="mt-5 hidden lg:block" aria-label="Áreas de gestão">
+        <nav className="mt-5" aria-label="Áreas de gestão">
           <ul className="space-y-3 text-sm">
             {navigation.map((item) => (
               <li key={item.to}>

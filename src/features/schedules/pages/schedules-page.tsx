@@ -11,6 +11,7 @@ import {
   SCHEDULE_DAYS,
   formatScheduleDate,
   formatScheduleTime,
+  scheduleTeacherName,
   type ClassSchedule,
 } from '@/features/schedules/schemas/schedule.schema'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
@@ -67,7 +68,7 @@ function ScheduleRow({
             <CalendarClock className="size-4" aria-hidden="true" />
             <span>{schedule.caveUnit?.name ?? 'Escopo da caverna'}</span>
             <span aria-hidden="true">·</span>
-            <span>{schedule.teacher?.name ?? 'Professor vinculado'}</span>
+            <span>{scheduleTeacherName(schedule)}</span>
           </div>
           <h2 className="mt-2 text-xl font-semibold">{schedule.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">

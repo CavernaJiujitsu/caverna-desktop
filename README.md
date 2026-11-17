@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Caverna Desktop is the React web client for Caverna Jiu-Jitsu, a platform for managing and following practitioners' journeys. The desktop signs in through the desktop endpoint and exposes authorized management routes for contexts, schedules, memberships, platform caves/users and the workouts pilot.
+Caverna Desktop is the React web client for Caverna Jiu-Jitsu, a platform for managing and following practitioners' journeys. The desktop signs in through the desktop endpoint and exposes authorized management routes for contexts, schedules, memberships, platform caves/users and the trainings overview.
 
 ## Problem & Motivation
 
@@ -22,7 +22,7 @@ flowchart LR
   Axios --> API[NestJS API]
 ```
 
-The diagram is the production flow. Pages call feature hooks, hooks coordinate TanStack Query, and feature services call the centralized Axios client. The session uses the desktop bearer-token login contract and is persisted in `localStorage` with an `expiresAt` derived from the backend `expiresIn`, so a reload within the token lifetime keeps the user signed in. Login stores the desktop roles and optional `teacherId`/`caveId`; `/management` loads the authorized contexts from the backend and only stores the context confirmed by the switch endpoint. The confirmed context is persisted with the session to restore the same workspace after a reload. The JWT is never replaced during a context switch. Development-only preview routes remain available for visual QA and are never linked from the product. `app` composes features and shared resources; features depend on `shared`; `shared` depends on neither app nor features.
+The diagram is the production flow. Pages call feature hooks, hooks coordinate TanStack Query, and feature services call the centralized Axios client. The session uses the desktop bearer-token login contract and is persisted in `localStorage` with an `expiresAt` derived from the backend `expiresIn`, so a reload within the token lifetime keeps the user signed in. Login stores the desktop roles and optional `teacherId`/`caveId`; `/management` loads the authorized contexts from the backend and only stores the context confirmed by the switch endpoint. The confirmed context is persisted with the session to restore the same workspace after a reload. The JWT is never replaced during a context switch. `app` composes features and shared resources; features depend on `shared`; `shared` depends on neither app nor features.
 
 ## Architectural Decisions
 
@@ -33,12 +33,12 @@ Feature ownership, query caching and fail-closed protected routes are recorded i
 ```text
 src/
   app/                 providers, router and layouts
-  features/            auth, management, schedules, memberships, platform, workouts and the legacy academies/classes/evaluations areas
+  features/            auth, management, academies (units), classes, evaluations, schedules, memberships, practitioners, teachers, belts, platform (caves, users and access) and trainings
   shared/              UI, HTTP, errors, notifications and query client
   styles/              provisional semantic tokens
   test/                test setup
 docs/                 architecture and engineering guidance
-specs/                template and illustrative authentication spec
+specs/                feature specs
 ```
 
 Only directories containing actual files are present.
@@ -53,7 +53,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open the URL printed by Vite. `/` redirects to `/login`. A successful desktop sign-in opens `/management`, where the backend-authorized contexts are listed and the chosen context is confirmed by `POST /management/contexts/switch`. The selected context drives the navigation: platform contexts open `/platform/caves` and `/platform/users`; academy and teacher contexts open `/schedules` and `/memberships`; every context can open `/workouts`. `/password-recovery` and `/password-recovery/reset` are public. `/access-denied` and `/session-expired` show safe informational states. `/preview/*` routes exist only during development for visual QA and are never linked from the product. The Vite dev server works without `.env` using documented local defaults.
+Open the URL printed by Vite. `/` redirects to `/login`. A successful desktop sign-in opens `/management`, where the backend-authorized contexts are listed and the chosen context is confirmed by `POST /management/contexts/switch`. The selected context drives the navigation: platform contexts (ADMIN/ROOT) open `/platform/caves`, `/platform/users` ("Usuários e acessos": roles, grant/revoke access, new management users), `/teachers`, `/administradores`, `/memberships` (every student of the network, filterable by cave/unit) and `/trainings` (read-only trainings with enrolled/present counts and roster); academy contexts (cave admin) open `/trainings`, `/classes`, `/schedules`, `/evaluations`, `/memberships`, `/teachers`, `/units` and `/administradores`; teacher contexts open `/classes` (own classes and attendance), `/schedules` and `/evaluations`. `/password-recovery` and `/password-recovery/reset` are public. `/access-denied` and `/session-expired` show safe informational states. The Vite dev server works without `.env` using documented local defaults.
 
 ## Environment Variables
 
@@ -78,7 +78,7 @@ Values are validated at startup. `VITE_*` values ship to the browser and must ne
 
 ## API Integration Strategy
 
-Feature services own calls and runtime validation of external responses. Hooks pass AbortSignal, use domain query keys and invalidate after mutations. The central Axios client has a public base URL, configurable timeout and safe error normalization. Login posts to `/desktop/auth/login` and unwraps the backend envelope `{ message, data, timestamp }`, validating the desktop roles and optional profile ids. Management contexts, schedules, memberships, platform administration and workouts all parse their real contracts with Zod. See [API integration](docs/api-integration.md).
+Feature services own calls and runtime validation of external responses. Hooks pass AbortSignal, use domain query keys and invalidate after mutations. The central Axios client has a public base URL, configurable timeout and safe error normalization. Login posts to `/desktop/auth/login` and unwraps the backend envelope `{ message, data, timestamp }`, validating the desktop roles and optional profile ids. Management contexts, schedules, memberships, platform administration and trainings all parse their real contracts with Zod. See [API integration](docs/api-integration.md).
 
 ## State Management Strategy
 
@@ -94,7 +94,7 @@ Vitest and React Testing Library cover component interaction, form validation, m
 
 ## Spec-Driven Development Workflow
 
-Use **Spec → Review → Implementation → Tests → Documentation → Pull Request**. The [spec template](specs/templates/feature-spec.md) captures the problem, requirements, contracts, UI states and acceptance tests. Keep small changes proportional. The [authentication example](specs/examples/authentication.md) lists open contract questions instead of making up endpoints.
+Use **Spec → Review → Implementation → Tests → Documentation → Pull Request**. Feature specs in `specs/` capture the problem, requirements, contracts, UI states and acceptance tests. Keep small changes proportional and record open contract questions instead of making up endpoints.
 
 ## Development Conventions
 
@@ -114,8 +114,7 @@ For a card-to-PR request, use them in that order. Each skill has entry/exit crit
 
 ## Roadmap
 
-1. Align the workouts pilot contract and permission grant (`workouts:read`) with the final product scope.
-2. Replace the remaining legacy academies/classes/evaluations screens as their management replacements leave pilot.
+1. Remove the backend `*/workouts` pilot endpoints (no longer used by the desktop; see `docs/treinos-e-alunos/` at the repository root).
 3. Decide server-side logout and token renewal with the backend; client-side persistence now lasts until the two-hour token expires.
 4. Finish the detailed Figma review when the design connector is available; replace the current visual approximation with approved tokens and components.
 5. Add the remaining rich management flows (attendance, belt evaluations and reports) on top of the real routes.
