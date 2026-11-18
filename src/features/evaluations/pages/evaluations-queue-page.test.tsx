@@ -263,9 +263,7 @@ describe('list states', () => {
     mocks.useEvaluations.mockReturnValue(queuePage([], 1, 0, 0))
     renderPage()
 
-    expect(
-      screen.getByText('Nenhuma validação encontrada'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Nenhuma validação encontrada')).toBeInTheDocument()
     expect(screen.getByText('0 validação(ões)')).toBeInTheDocument()
   })
 })

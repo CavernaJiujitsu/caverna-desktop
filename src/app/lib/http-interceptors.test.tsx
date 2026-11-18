@@ -105,8 +105,12 @@ function heldRequest() {
 }
 
 function SessionControls() {
-  const { session: current, selectedContext, setSession, setSelectedContext } =
-    useSession()
+  const {
+    session: current,
+    selectedContext,
+    setSession,
+    setSelectedContext,
+  } = useSession()
   return (
     <section>
       <p>Token: {current?.accessToken ?? 'nenhum'}</p>
@@ -231,7 +235,9 @@ describe('global 401 interceptor', () => {
     await act(async () => {})
 
     expect(router.state.location.pathname).toBe('/units')
-    expect(screen.getByText('Contexto: Caverna Brasilândia')).toBeInTheDocument()
+    expect(
+      screen.getByText('Contexto: Caverna Brasilândia'),
+    ).toBeInTheDocument()
     expect(screen.getByText('Token: token-atual')).toBeInTheDocument()
   })
 

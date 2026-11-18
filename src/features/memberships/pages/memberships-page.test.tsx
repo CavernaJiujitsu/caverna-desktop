@@ -148,7 +148,11 @@ beforeEach(() => {
       items: [
         {
           id: 'practitioner-9',
-          user: { id: 'user-9', name: 'Aluno Geral', email: 'geral@caverna.com' },
+          user: {
+            id: 'user-9',
+            name: 'Aluno Geral',
+            email: 'geral@caverna.com',
+          },
           currentBelt: { id: 'belt-blue', name: 'Azul' },
           units: [
             {
@@ -161,7 +165,11 @@ beforeEach(() => {
         },
         {
           id: 'practitioner-10',
-          user: { id: 'user-10', name: 'Aluno Solto', email: 'solto@caverna.com' },
+          user: {
+            id: 'user-10',
+            name: 'Aluno Solto',
+            email: 'solto@caverna.com',
+          },
           currentBelt: null,
           units: [],
         },

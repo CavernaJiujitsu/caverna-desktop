@@ -71,7 +71,8 @@ function apiValidationPage(
   items: unknown[],
   meta: { page: number; totalPage: number; total: number },
 ) {
-  const href = (page: number) => `/api/v1/belt-validations?page=${page}&limit=20`
+  const href = (page: number) =>
+    `/api/v1/belt-validations?page=${page}&limit=20`
   return {
     message: 'Validações de faixa listadas',
     data: {
@@ -175,7 +176,10 @@ it('keeps only the teacher name from validation answers (DEC-backend-2)', async 
       id: '1551ef33-ed29-4841-ac0e-db11d8e0422e',
       type: 'SCHEDULED',
       startsAt: '2026-11-20T22:00:00.000Z',
-      caveUnit: { id: '7ad902c2-4988-47fc-8340-e7bc2dc3b477', name: 'Consolação' },
+      caveUnit: {
+        id: '7ad902c2-4988-47fc-8340-e7bc2dc3b477',
+        name: 'Consolação',
+      },
       teacher,
     },
   }
@@ -192,7 +196,9 @@ it('keeps only the teacher name from validation answers (DEC-backend-2)', async 
   for (const evaluation of [listed, approved]) {
     expect(evaluation?.teacher?.user).toEqual({ name: 'Mestre Semente' })
     expect(evaluation?.class?.teacher?.user).toEqual({ name: 'Mestre Semente' })
-    expect(JSON.stringify(evaluation)).not.toContain('mestre.semente@caverna.com')
+    expect(JSON.stringify(evaluation)).not.toContain(
+      'mestre.semente@caverna.com',
+    )
   }
 })
 

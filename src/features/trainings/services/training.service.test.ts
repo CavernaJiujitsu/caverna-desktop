@@ -20,11 +20,14 @@ describe('trainingService.list', () => {
 
   it('maps seat usage, the C1 teacher name and omits empty filters', async () => {
     mockedGet.mockResolvedValueOnce({
-      data: apiClassPage([{ ...apiClassC1, enrolledCount: 12, presentCount: 8 }], {
-        page: 1,
-        totalPage: 3,
-        total: 41,
-      }),
+      data: apiClassPage(
+        [{ ...apiClassC1, enrolledCount: 12, presentCount: 8 }],
+        {
+          page: 1,
+          totalPage: 3,
+          total: 41,
+        },
+      ),
     })
 
     const result = await trainingService.list({

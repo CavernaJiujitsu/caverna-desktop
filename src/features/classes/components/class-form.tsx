@@ -190,8 +190,8 @@ export function ClassForm({ value, scope, onClose }: ClassFormProps) {
                     : scope.teachersError
                       ? 'Não foi possível carregar os professores'
                       : unitTeachers.length === 0
-                      ? 'Nenhum professor nesta unidade'
-                      : 'Selecione'}
+                        ? 'Nenhum professor nesta unidade'
+                        : 'Selecione'}
                 </option>
                 {unitTeachers.map((teacher) => (
                   <option key={teacher.id} value={teacher.id}>

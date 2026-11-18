@@ -115,9 +115,9 @@ For a card-to-PR request, use them in that order. Each skill has entry/exit crit
 ## Roadmap
 
 1. Remove the backend `*/workouts` pilot endpoints (no longer used by the desktop; see `docs/treinos-e-alunos/` at the repository root).
-3. Decide server-side logout and token renewal with the backend; client-side persistence now lasts until the two-hour token expires.
-4. Finish the detailed Figma review when the design connector is available; replace the current visual approximation with approved tokens and components.
-5. Add the remaining rich management flows (attendance, belt evaluations and reports) on top of the real routes.
+2. Decide server-side logout and token renewal with the backend; client-side persistence now lasts until the two-hour token expires.
+3. Finish the detailed Figma review when the design connector is available; replace the current visual approximation with approved tokens and components.
+4. Add the remaining rich management flows (attendance, belt evaluations and reports) on top of the real routes.
 
 ## Contributing
 

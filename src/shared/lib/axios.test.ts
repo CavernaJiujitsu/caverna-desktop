@@ -127,7 +127,11 @@ describe('HTTP boundary', () => {
 
   it.each([
     ['ERR_CANCELED', 'cancelled', 'Requisição cancelada.'],
-    ['ECONNABORTED', 'timeout', 'A requisição demorou demais. Tente novamente.'],
+    [
+      'ECONNABORTED',
+      'timeout',
+      'A requisição demorou demais. Tente novamente.',
+    ],
     ['ETIMEDOUT', 'timeout', 'A requisição demorou demais. Tente novamente.'],
     [
       'ERR_NETWORK',

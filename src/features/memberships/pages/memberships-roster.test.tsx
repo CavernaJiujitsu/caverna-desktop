@@ -98,7 +98,12 @@ const studentsResponse = {
         },
         currentBelt: null,
         units: [
-          { id: UNIT_ID, name: 'Centro', caveId: CAVE_ID, caveName: 'Caverna Matriz' },
+          {
+            id: UNIT_ID,
+            name: 'Centro',
+            caveId: CAVE_ID,
+            caveName: 'Caverna Matriz',
+          },
           {
             id: '0705f03d-a079-4ae6-80ea-899e31adc123',
             name: 'Brasilândia',
@@ -147,7 +152,11 @@ function getCalls(url: string) {
 function renderPage() {
   writeStoredSession({
     session: {
-      user: { id: 'user-cave-admin', email: 'admin.caverna@caverna.com', name: 'Admin' },
+      user: {
+        id: 'user-cave-admin',
+        email: 'admin.caverna@caverna.com',
+        name: 'Admin',
+      },
       accessToken: 'token',
       expiresAt: Date.now() + 7_200_000,
       roles: ['CAVE_ADMIN'],
@@ -212,7 +221,9 @@ describe('unit roster', () => {
       UNIT_ID,
     )
 
-    expect(await screen.findByText('Nenhum aluno vinculado')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Nenhum aluno vinculado'),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Desvincular' }),
     ).not.toBeInTheDocument()
@@ -239,8 +250,12 @@ describe('unit roster', () => {
     vi.mocked(http.get).mockImplementation(async () => ({
       data: rosterResponse(serverRoster),
     }))
-    await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
-    const roster = await screen.findByRole('list', { name: 'Alunos da unidade' })
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Tentar novamente' }),
+    )
+    const roster = await screen.findByRole('list', {
+      name: 'Alunos da unidade',
+    })
     expect(within(roster).getByText('Aluno Demo')).toBeInTheDocument()
   })
 
@@ -256,14 +271,18 @@ describe('unit roster', () => {
       within(roster).getByRole('button', { name: 'Desvincular' }),
     )
 
-    expect(await screen.findByText('Nenhum aluno vinculado')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Nenhum aluno vinculado'),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Desvincular' }),
     ).not.toBeInTheDocument()
     expect(http.delete).toHaveBeenCalledTimes(1)
     expect(http.delete).toHaveBeenCalledWith(UNLINK_URL)
     expect(getCalls(ROSTER_URL)).toHaveLength(2)
-    expect(notify.success).toHaveBeenCalledWith('Aluno desvinculado da unidade.')
+    expect(notify.success).toHaveBeenCalledWith(
+      'Aluno desvinculado da unidade.',
+    )
   })
 
   it('blocks a second unlink while the first one is in flight', async () => {
@@ -289,7 +308,9 @@ describe('unit roster', () => {
     expect(http.delete).toHaveBeenCalledTimes(1)
 
     finishUnlink()
-    expect(await screen.findByText('Nenhum aluno vinculado')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Nenhum aluno vinculado'),
+    ).toBeInTheDocument()
     expect(http.delete).toHaveBeenCalledTimes(1)
   })
 
@@ -309,7 +330,9 @@ describe('unit roster', () => {
     await waitFor(() =>
       expect(notify.error).toHaveBeenCalledWith('Vínculo não encontrado'),
     )
-    expect(await screen.findByText('Nenhum aluno vinculado')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Nenhum aluno vinculado'),
+    ).toBeInTheDocument()
     expect(http.delete).toHaveBeenCalledTimes(1)
   })
 

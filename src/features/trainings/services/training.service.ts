@@ -37,7 +37,10 @@ function toTrainingItem(item: z.infer<typeof apiTrainingSchema>): TrainingItem {
 }
 
 export const trainingService = {
-  async list(query: TrainingQuery, signal?: AbortSignal): Promise<TrainingPage> {
+  async list(
+    query: TrainingQuery,
+    signal?: AbortSignal,
+  ): Promise<TrainingPage> {
     try {
       // Empty filters are omitted: the API rejects empty UUID strings.
       const params = Object.fromEntries(

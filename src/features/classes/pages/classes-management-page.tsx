@@ -98,8 +98,7 @@ export default function ClassesManagementPage() {
   // A deletion can empty the last page; fall back to the new last one.
   if (query.data && !query.isPlaceholderData && page > lastPage)
     setPage(lastPage)
-  const catalogsError =
-    scopeReady && (scope.unitsError || scope.teachersError)
+  const catalogsError = scopeReady && (scope.unitsError || scope.teachersError)
 
   function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters((current) => ({ ...current, [key]: value }))

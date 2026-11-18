@@ -57,7 +57,10 @@ export function normalizeHttpError(error: unknown): AppError {
   if (axiosError.code === 'ERR_CANCELED')
     return new AppError('cancelled', 'Requisição cancelada.')
   if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT')
-    return new AppError('timeout', 'A requisição demorou demais. Tente novamente.')
+    return new AppError(
+      'timeout',
+      'A requisição demorou demais. Tente novamente.',
+    )
   if (!axiosError.response)
     return new AppError(
       'network',

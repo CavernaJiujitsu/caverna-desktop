@@ -141,9 +141,10 @@ it('lists trainings with seat usage and expands the roster', async () => {
   expect(screen.getByText('Presente')).toBeInTheDocument()
   expect(screen.getByText('Inscrito')).toBeInTheDocument()
   expect(mocks.useEnrollments).toHaveBeenCalledWith('class-1')
-  expect(
-    screen.getByRole('link', { name: 'Gerenciar aula' }),
-  ).toHaveAttribute('href', '/classes?classId=class-1')
+  expect(screen.getByRole('link', { name: 'Gerenciar aula' })).toHaveAttribute(
+    'href',
+    '/classes?classId=class-1',
+  )
 })
 
 it('hides "Gerenciar aula" from the platform context, which cannot open classes', async () => {
@@ -171,9 +172,7 @@ it('shows a fallback when the API does not send the teacher name', async () => {
   })
   renderPage()
 
-  expect(
-    await screen.findByText('Professor não informado'),
-  ).toBeInTheDocument()
+  expect(await screen.findByText('Professor não informado')).toBeInTheDocument()
 })
 
 it('shows the loading state while trainings load', async () => {

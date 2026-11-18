@@ -4,7 +4,9 @@ import { ClassForm } from '@/features/classes/components/class-form'
 import type { ClassScope } from '@/features/classes/hooks/use-class-scope'
 
 vi.mock('@/features/classes/hooks/use-classes', () => ({
-  useClassMutations: () => ({ save: { isPending: false, mutateAsync: vi.fn() } }),
+  useClassMutations: () => ({
+    save: { isPending: false, mutateAsync: vi.fn() },
+  }),
 }))
 
 vi.mock('@/features/belts/hooks/use-belts', () => ({

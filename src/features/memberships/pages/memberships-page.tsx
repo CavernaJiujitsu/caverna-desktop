@@ -344,7 +344,6 @@ export default function MembershipsPage() {
             )}
           </section>
 
-
           {selectedUnit && (
             <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
               <div>
