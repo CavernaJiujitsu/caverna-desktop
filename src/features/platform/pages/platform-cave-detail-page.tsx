@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, LoaderCircle, Plus, RotateCcw, Trash2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import { routes } from '@/app/router/routes'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import { CaveAdminForm } from '@/features/platform/components/cave-admin-form'
@@ -14,6 +14,7 @@ import {
 } from '@/features/platform/hooks/use-platform-caves'
 import { classService } from '@/features/classes/services/class.service'
 import type { ClassItem } from '@/features/classes/schemas/class.schema'
+import type { PlatformCaveUnit } from '@/features/platform/schemas/cave.schema'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
 import { ErrorState } from '@/shared/components/feedback/error-state'
 import { LoadingState } from '@/shared/components/feedback/loading-state'
@@ -56,6 +57,14 @@ function formatTime(iso: string): string {
 }
 
 const CLASSES_PER_PAGE = 8
+const UNITS_PER_PAGE = 10
+
+function normalizedName(name: string) {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+}
 
 export function UnitClassesPreview({
   unitName,
@@ -137,6 +146,233 @@ export function UnitClassesPreview({
   )
 }
 
+export function PlatformUnitsTable({
+  units,
+  date,
+  onArchive,
+}: {
+  units: PlatformCaveUnit[]
+  date: string | null
+  onArchive?: (id: string, name: string) => void
+}) {
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
+  const [classState, setClassState] = useState<{
+    items: ClassItem[]
+    loading: boolean
+    error: boolean
+  }>({ items: [], loading: false, error: false })
+  const term = normalizedName(search.trim())
+  const filtered = units.filter((unit) =>
+    normalizedName(unit.name).includes(term),
+  )
+  const totalPages = Math.max(1, Math.ceil(filtered.length / UNITS_PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const first = (currentPage - 1) * UNITS_PER_PAGE
+  const visible = filtered.slice(first, first + UNITS_PER_PAGE)
+
+  useEffect(() => {
+    if (!expandedId) return
+    const controller = new AbortController()
+    classService
+      .list({ caveUnitId: expandedId, ...classWindow(date) }, controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted)
+          setClassState({ items, loading: false, error: false })
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setClassState({ items: [], loading: false, error: true })
+      })
+    return () => controller.abort()
+  }, [expandedId, date, reload])
+
+  return (
+    <>
+      <div className="mt-4 max-w-sm">
+        <label htmlFor="unit-search" className="mb-2 block text-sm font-medium">
+          Pesquisar unidade
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id="unit-search"
+            type="search"
+            placeholder="Nome da unidade"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(1)
+              setExpandedId(null)
+            }}
+          />
+          {search && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSearch('')}
+            >
+              Limpar
+            </Button>
+          )}
+        </div>
+      </div>
+      <p className="my-3 text-sm text-muted-foreground" aria-live="polite">
+        {filtered.length} de {units.length} unidades
+      </p>
+      {filtered.length === 0 ? (
+        <EmptyState
+          title="Nenhuma unidade corresponde à pesquisa"
+          description="Tente outro nome ou limpe a pesquisa."
+        />
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <caption className="sr-only">Unidades da caverna</caption>
+              <thead className="bg-muted text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Unidade
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Endereço
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Situação
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {visible.map((unit) => (
+                  <Fragment key={unit.id}>
+                    <tr>
+                      <th scope="row" className="px-4 py-3 font-medium">
+                        {unit.name}
+                      </th>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {[unit.address, unit.neighborhood]
+                          .filter(Boolean)
+                          .join(' · ') || 'Endereço não informado'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {unit.active ? 'Ativa' : 'Inativa'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            aria-expanded={expandedId === unit.id}
+                            onClick={() => {
+                              setClassState({
+                                items: [],
+                                loading: true,
+                                error: false,
+                              })
+                              setExpandedId(
+                                expandedId === unit.id ? null : unit.id,
+                              )
+                            }}
+                          >
+                            {expandedId === unit.id
+                              ? 'Ocultar aulas'
+                              : 'Ver aulas'}
+                          </Button>
+                          {onArchive && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              aria-label={`Arquivar ${unit.name}`}
+                              onClick={() => onArchive(unit.id, unit.name)}
+                            >
+                              <Trash2 className="size-3" aria-hidden="true" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedId === unit.id && (
+                      <tr>
+                        <td colSpan={4} className="bg-muted/30 px-4 py-4">
+                          {classState.error ? (
+                            <ErrorState
+                              message="Não foi possível carregar as aulas."
+                              onRetry={() => {
+                                setClassState({
+                                  items: [],
+                                  loading: true,
+                                  error: false,
+                                })
+                                setReload((value) => value + 1)
+                              }}
+                              retryLabel="Tentar novamente"
+                            />
+                          ) : (
+                            <UnitClassesPreview
+                              key={`${unit.id}:${date ?? ''}`}
+                              unitName={unit.name}
+                              items={classState.items}
+                              loading={classState.loading}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <nav
+              aria-label="Paginação das unidades"
+              className="mt-4 flex flex-wrap items-center justify-between gap-3"
+            >
+              <span className="text-sm text-muted-foreground">
+                {first + 1}–{Math.min(first + UNITS_PER_PAGE, filtered.length)}{' '}
+                de {filtered.length} · Página {currentPage} de {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={currentPage === 1}
+                  onClick={() => {
+                    setPage(currentPage - 1)
+                    setExpandedId(null)
+                  }}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={currentPage === totalPages}
+                  onClick={() => {
+                    setPage(currentPage + 1)
+                    setExpandedId(null)
+                  }}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </nav>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
 export default function PlatformCaveDetailPage() {
   const { caveId = '' } = useParams<{ caveId: string }>()
   const navigate = useNavigate()
@@ -155,37 +391,7 @@ export default function PlatformCaveDetailPage() {
   const units = unitsQuery.data ?? []
   const admins = adminsQuery.data ?? []
 
-  const [classes, setClasses] = useState<Record<string, ClassItem[]>>({})
-  const [classesLoading, setClassesLoading] = useState<Record<string, boolean>>(
-    {},
-  )
-
   const dateParam = searchParams.get('date')
-
-  const loadedUnits = unitsQuery.data
-
-  useEffect(() => {
-    if (!loadedUnits?.length) return
-    const range = classWindow(dateParam)
-    const controllers: AbortController[] = []
-    loadedUnits.forEach((unit) => {
-      setClassesLoading((prev) => ({ ...prev, [unit.id]: true }))
-      const ctrl = new AbortController()
-      controllers.push(ctrl)
-      classService
-        .list({ caveUnitId: unit.id, ...range }, ctrl.signal)
-        .then((items) => {
-          setClasses((prev) => ({ ...prev, [unit.id]: items }))
-          setClassesLoading((prev) => ({ ...prev, [unit.id]: false }))
-        })
-        .catch(() => {
-          setClassesLoading((prev) => ({ ...prev, [unit.id]: false }))
-        })
-    })
-    return () => {
-      controllers.forEach((ctrl) => ctrl.abort())
-    }
-  }, [loadedUnits, dateParam])
 
   async function updateCaveActive(nextActive: boolean) {
     const action = nextActive ? 'reativar' : 'desativar'
@@ -379,96 +585,6 @@ export default function PlatformCaveDetailPage() {
             </section>
           )}
 
-          <section className="mt-8" aria-labelledby="units-title">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 id="units-title" className="text-lg font-semibold">
-                Unidades
-              </h2>
-              {isPlatformAdmin && (
-                <Button asChild size="sm" variant="outline">
-                  <Link
-                    to={`${routes.units}?caveId=${encodeURIComponent(caveId)}`}
-                  >
-                    <Plus className="size-3 mr-1" aria-hidden="true" />
-                    Nova unidade
-                  </Link>
-                </Button>
-              )}
-            </div>
-            <div className="mt-3">
-              {unitsQuery.isPending ? (
-                <LoadingState label="Carregando unidades…" />
-              ) : unitsQuery.isError ? (
-                <ErrorState
-                  message={messageForError(
-                    unitsQuery.error,
-                    'Não foi possível carregar as unidades.',
-                  )}
-                  onRetry={() => void unitsQuery.refetch()}
-                  retryLabel="Tentar novamente"
-                />
-              ) : units.length === 0 ? (
-                <EmptyState title="Nenhuma unidade cadastrada" />
-              ) : (
-                <div className="space-y-3">
-                  {units.map((unit) => {
-                    const unitClasses = classes[unit.id] ?? []
-                    const isLoading = classesLoading[unit.id] ?? false
-                    return (
-                      <div
-                        key={unit.id}
-                        className="rounded-lg border border-border bg-card p-4"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                          <div>
-                            <p className="font-medium">{unit.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {[unit.address, unit.neighborhood]
-                                .filter(Boolean)
-                                .join(' · ') || 'Endereço não informado'}
-                            </p>
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
-                                unit.active
-                                  ? 'bg-green/10 text-green-foreground border border-green/20'
-                                  : 'bg-amber/10 text-amber-foreground border border-amber/20'
-                              }`}
-                            >
-                              <span
-                                className="size-2 fill-current"
-                                aria-hidden="true"
-                              />
-                              {unit.active ? 'Ativa' : 'Inativa'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isPlatformAdmin && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => archiveUnit(unit.id, unit.name)}
-                                disabled={unitsQuery.isPending}
-                              >
-                                <Trash2 className="size-3" aria-hidden="true" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        <UnitClassesPreview
-                          key={`${unit.id}:${dateParam ?? ''}`}
-                          unitName={unit.name}
-                          items={unitClasses}
-                          loading={isLoading}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-
           <section className="mt-8" aria-labelledby="admins-title">
             <h2 id="admins-title" className="text-lg font-semibold">
               Gestores da caverna
@@ -529,6 +645,48 @@ export default function PlatformCaveDetailPage() {
                 </div>
               </div>
             </div>
+          </section>
+          <section className="mt-8" aria-labelledby="units-title">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 id="units-title" className="text-lg font-semibold">
+                Unidades
+              </h2>
+              {isPlatformAdmin && (
+                <Button asChild size="sm" variant="outline">
+                  <Link
+                    to={`${routes.units}?caveId=${encodeURIComponent(caveId)}`}
+                  >
+                    <Plus className="size-3 mr-1" aria-hidden="true" />
+                    Nova unidade
+                  </Link>
+                </Button>
+              )}
+            </div>
+            {unitsQuery.isPending ? (
+              <LoadingState label="Carregando unidades…" />
+            ) : unitsQuery.isError ? (
+              <ErrorState
+                message={messageForError(
+                  unitsQuery.error,
+                  'Não foi possível carregar as unidades.',
+                )}
+                onRetry={() => void unitsQuery.refetch()}
+                retryLabel="Tentar novamente"
+              />
+            ) : units.length === 0 ? (
+              <EmptyState title="Nenhuma unidade cadastrada" />
+            ) : (
+              <PlatformUnitsTable
+                key={dateParam ?? ''}
+                units={units}
+                date={dateParam}
+                onArchive={
+                  isPlatformAdmin
+                    ? (id, name) => void archiveUnit(id, name)
+                    : undefined
+                }
+              />
+            )}
           </section>
         </>
       )}
