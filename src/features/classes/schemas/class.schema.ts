@@ -46,6 +46,7 @@ export const apiClassSchema = z.object({
   startsAt: z.string(),
   endsAt: z.string(),
   capacity: z.number(),
+  enrolledCount: z.number().optional(),
   caveUnit: z
     .object({
       id: z.string(),
@@ -66,6 +67,7 @@ export type ClassItem = {
   startsAt: string
   endsAt: string
   capacity: number
+  enrolledCount?: number
   caveUnitId: string
   caveUnitName: string
   caveName: string | null

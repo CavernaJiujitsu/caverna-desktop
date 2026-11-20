@@ -67,6 +67,9 @@ function toClassItem(item: z.infer<typeof apiClassSchema>): ClassItem {
     startsAt: item.startsAt,
     endsAt: item.endsAt,
     capacity: item.capacity,
+    ...(item.enrolledCount !== undefined
+      ? { enrolledCount: item.enrolledCount }
+      : {}),
     caveUnitId: item.caveUnit?.id ?? '',
     caveUnitName: item.caveUnit?.name ?? 'Unidade não informada',
     caveName: item.caveUnit?.cave?.name ?? null,

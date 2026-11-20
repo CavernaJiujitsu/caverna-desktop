@@ -10,8 +10,10 @@ export const EVALUATION_STATUSES = [
   'CANCELLED',
 ] as const
 export type EvaluationStatus = (typeof EVALUATION_STATUSES)[number]
+export type EvaluationFilterStatus = EvaluationStatus | 'OPEN'
 
-export const EVALUATION_STATUS_LABELS: Record<EvaluationStatus, string> = {
+export const EVALUATION_STATUS_LABELS: Record<EvaluationFilterStatus, string> = {
+  OPEN: 'Em aberto (pendentes e agendadas)',
   PENDING: 'Pendente',
   SCHEDULED: 'Agendada',
   APPROVED: 'Aprovada',
@@ -66,7 +68,7 @@ export type EvaluationFilters = {
   caveId?: string
   teacherId?: string
   date?: string
-  status?: EvaluationStatus
+  status?: EvaluationFilterStatus
   page?: number
 }
 

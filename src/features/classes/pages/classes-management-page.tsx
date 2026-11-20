@@ -1,5 +1,5 @@
-import { CalendarDays, Pencil, Plus, Trash2, Users } from 'lucide-react'
-import { useState } from 'react'
+import { Pencil, Plus, Trash2, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import { ClassAttendancePanel } from '@/features/classes/components/class-attendance-panel'
@@ -73,6 +73,7 @@ export default function ClassesManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedClassId = searchParams.get('classId') ?? ''
   const selectedClass = useClass(selectedClassId)
+  const panelRef = useRef<HTMLDivElement>(null)
   const { remove } = useClassMutations()
 
   const teacherId = scope.isTeacher ? scope.ownTeacherId : filters.teacherId
@@ -109,6 +110,12 @@ export default function ClassesManagementPage() {
     setEditing(undefined)
     setSearchParams({ classId: id })
   }
+
+  useEffect(() => {
+    if ((selectedClassId || editing !== undefined) && panelRef.current) {
+      panelRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    }
+  }, [selectedClassId, editing])
 
   function closeClass() {
     setSearchParams({})
@@ -168,11 +175,7 @@ export default function ClassesManagementPage() {
           onClose={closeClass}
         />
       )
-    ) : (
-      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-        Selecione uma aula para abrir a chamada ou crie uma nova aula.
-      </div>
-    )
+    ) : null
 
   return (
     <ManagementShell>
@@ -310,7 +313,12 @@ export default function ClassesManagementPage() {
           </div>
         )}
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        {sidePanel ? (
+          <div ref={panelRef} className="mt-6 scroll-mt-6">
+            {sidePanel}
+          </div>
+        ) : null}
+        <div className="mt-6">
           <section aria-labelledby="class-list-title">
             <div className="mb-3 flex items-center justify-between">
               <h2 id="class-list-title" className="text-lg font-semibold">
@@ -339,71 +347,64 @@ export default function ClassesManagementPage() {
                 description="Ajuste o período ou os filtros para consultar outras aulas."
               />
             ) : (
-              <ul className="grid gap-3" aria-label="Aulas">
-                {classes.map((item) => (
-                  <li
-                    key={item.id}
-                    className={`rounded-xl border bg-card p-5 ${
-                      selectedClassId === item.id
-                        ? 'border-primary'
-                        : 'border-border'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CalendarDays className="size-4" aria-hidden="true" />
-                      {formatClassDate(item.startsAt)} ·{' '}
-                      {formatTime(item.startsAt)}–{formatTime(item.endsAt)}
-                    </div>
-                    <h3 className="mt-2 text-lg font-semibold">
-                      {CLASS_TYPE_LABELS[item.type]} · {item.caveUnitName}
-                    </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {scope.teacherName(item.teacherId, item.teacherName)} ·{' '}
-                      {item.capacity} vagas
-                      {item.belts.length > 0
-                        ? ` · ${item.belts.map((belt) => belt.name).join(', ')}`
-                        : ''}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => openClass(item.id)}
+              <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                <table className="w-full min-w-[760px] text-left text-sm" aria-label="Aulas">
+                  <thead className="border-b border-border bg-accent/40 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th scope="col" className="px-4 py-3">Aula / data</th>
+                      <th scope="col" className="px-4 py-3">Unidade</th>
+                      <th scope="col" className="px-4 py-3">Professor</th>
+                      <th scope="col" className="px-4 py-3">Vagas</th>
+                      <th scope="col" className="px-4 py-3">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {classes.map((item) => (
+                      <tr
+                        key={item.id}
+                        className={selectedClassId === item.id ? 'bg-accent/60' : 'hover:bg-accent/30'}
                       >
-                        <Users className="size-4" aria-hidden="true" />
-                        Chamada
-                      </Button>
-                      {canManage(item) && (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              closeClass()
-                              setEditing(item)
-                            }}
-                          >
-                            <Pencil className="size-4" aria-hidden="true" />
-                            Editar
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            disabled={remove.isPending}
-                            onClick={() => void removeClass(item)}
-                          >
-                            <Trash2 className="size-4" aria-hidden="true" />
-                            Excluir
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                        <td className="px-4 py-3">
+                          <span className="block font-semibold">{CLASS_TYPE_LABELS[item.type]}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatClassDate(item.startsAt)} · {formatTime(item.startsAt)}–{formatTime(item.endsAt)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">{item.caveUnitName}</td>
+                        <td className="px-4 py-3">{scope.teacherName(item.teacherId, item.teacherName)}</td>
+                        <td className="px-4 py-3">
+                          {item.enrolledCount === undefined
+                            ? `${item.capacity} vagas`
+                            : `${item.enrolledCount} de ${item.capacity}`}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            <Button type="button" size="sm" variant="secondary" onClick={() => openClass(item.id)}>
+                              <Users className="size-4" aria-hidden="true" />
+                              Chamada
+                            </Button>
+                            {canManage(item) && (
+                              <>
+                                <Button type="button" size="sm" variant="ghost" onClick={() => {
+                                  closeClass()
+                                  setEditing(item)
+                                }}>
+                                  <Pencil className="size-4" aria-hidden="true" />
+                                  Editar
+                                </Button>
+                                <Button type="button" size="sm" variant="ghost" disabled={remove.isPending} onClick={() => void removeClass(item)}>
+                                  <Trash2 className="size-4" aria-hidden="true" />
+                                  Excluir
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
             {query.data && !query.isError && query.data.totalPages > 1 ? (
               <nav
@@ -434,7 +435,6 @@ export default function ClassesManagementPage() {
               </nav>
             ) : null}
           </section>
-          <div>{sidePanel}</div>
         </div>
       </div>
     </ManagementShell>

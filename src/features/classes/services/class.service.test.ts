@@ -87,6 +87,16 @@ describe('classService', () => {
     expect(page.items).toHaveLength(1)
   })
 
+  it('preserves occupied seats for the class table', async () => {
+    vi.mocked(http.get).mockResolvedValue({
+      data: apiClassPage([{ ...apiClassC1, enrolledCount: 8 }], meta),
+    })
+
+    const { items } = await classService.listPage({ page: 1 })
+
+    expect(items[0]?.enrolledCount).toBe(8)
+  })
+
   it('reads the teacher name from teacher.user (contract C1)', async () => {
     vi.mocked(http.get).mockResolvedValue({
       data: apiClassPage([apiClassC1], meta),
@@ -100,6 +110,7 @@ describe('classService', () => {
       startsAt: '2026-11-14T18:00:00.000Z',
       endsAt: '2026-11-14T19:30:00.000Z',
       capacity: 20,
+      enrolledCount: 0,
       caveUnitId: '7ad902c2-4988-47fc-8340-e7bc2dc3b477',
       caveUnitName: 'Consolação',
       caveName: 'Caverna Matriz',

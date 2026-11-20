@@ -161,7 +161,7 @@ describe('pagination', () => {
 
     expect(lastFilters()).toMatchObject({
       caveId: 'cave-1',
-      status: 'PENDING',
+      status: 'OPEN',
       page: 1,
     })
     expect(screen.getByText('41 validação(ões)')).toBeInTheDocument()

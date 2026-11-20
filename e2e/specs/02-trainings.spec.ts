@@ -66,9 +66,7 @@ test.describe('jornada 2: treinos', () => {
     ).toBeVisible()
 
     // A range longer than 31 days is not rejected: the end date is limited.
-    await filters
-      .getByLabel('Até', { exact: true })
-      .fill('2099-12-31')
+    await filters.getByLabel('Até', { exact: true }).fill('2099-12-31')
     await expect(
       page
         .getByRole('status')

@@ -214,43 +214,41 @@ export default function UnitsPage() {
                 />
               ) : (
                 <>
-                  <ul
-                    className="divide-y divide-border rounded-xl border border-border bg-card"
-                    aria-label="Unidades da caverna"
-                  >
-                    {unitPage?.items.map((unit) => (
-                      <li key={unit.id} className="p-4">
-                        {editingUnitId === unit.id ? (
-                          <UnitForm
-                            caveId={caveId}
-                            unit={unit}
-                            onDone={() => setEditingUnitId(null)}
-                          />
-                        ) : (
-                          <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="font-semibold">{unit.name}</h3>
-                                <span
-                                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                    unit.active
-                                      ? 'bg-accent text-accent-foreground'
-                                      : 'bg-muted text-muted-foreground'
-                                  }`}
-                                >
-                                  {unit.active ? 'Ativa' : 'Arquivada'}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {[unit.address, unit.neighborhood]
-                                  .filter(Boolean)
-                                  .join(' · ') || 'Endereço não informado'}
-                              </p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                Localização: {unitLocation(unit)}
-                              </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
+                   <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                     <table className="w-full min-w-[680px] text-left text-sm" aria-label="Unidades da caverna">
+                       <thead className="border-b border-border bg-accent/40 text-xs uppercase text-muted-foreground">
+                         <tr>
+                           <th scope="col" className="px-4 py-3">Unidade</th>
+                           <th scope="col" className="px-4 py-3">Endereço</th>
+                           <th scope="col" className="px-4 py-3">Situação</th>
+                           <th scope="col" className="px-4 py-3">Ações</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-border">
+                         {unitPage?.items.map((unit) => (
+                           <tr key={unit.id}>
+                             {editingUnitId === unit.id ? (
+                               <td colSpan={4} className="p-4">
+                                 <UnitForm
+                                   caveId={caveId}
+                                   unit={unit}
+                                   onDone={() => setEditingUnitId(null)}
+                                 />
+                               </td>
+                             ) : (
+                               <>
+                                 <td className="px-4 py-3 font-semibold">{unit.name}</td>
+                                 <td className="px-4 py-3 text-muted-foreground">
+                                   <span className="block">{[unit.address, unit.neighborhood].filter(Boolean).join(' · ') || 'Endereço não informado'}</span>
+                                   <span className="text-xs">Localização: {unitLocation(unit)}</span>
+                                 </td>
+                                 <td className="px-4 py-3">
+                                   <span className={unit.active ? 'text-primary' : 'text-muted-foreground'}>
+                                     {unit.active ? 'Ativa' : 'Arquivada'}
+                                   </span>
+                                 </td>
+                                 <td className="px-4 py-3">
+                                   <div className="flex flex-wrap gap-2">
                               <Button
                                 type="button"
                                 size="sm"
@@ -289,12 +287,15 @@ export default function UnitsPage() {
                                   Reativar
                                 </Button>
                               )}
-                            </div>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                                   </div>
+                                 </td>
+                               </>
+                             )}
+                           </tr>
+                         ))}
+                       </tbody>
+                     </table>
+                   </div>
                   <nav
                     className="mt-4 flex items-center justify-between gap-3"
                     aria-label="Paginação de unidades"

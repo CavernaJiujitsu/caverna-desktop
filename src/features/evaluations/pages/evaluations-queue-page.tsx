@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import { EvaluationCard } from '@/features/evaluations/components/evaluation-card'
 import { useEvaluations } from '@/features/evaluations/hooks/use-evaluations'
+import { EntryVerifyPanel } from '@/features/entries/components/entry-verify-panel'
 import {
   EVALUATION_STATUSES,
   EVALUATION_STATUS_LABELS,
-  type EvaluationStatus,
+  type EvaluationFilterStatus,
 } from '@/features/evaluations/services/evaluation.service'
 import { useTeacherOptions } from '@/features/teachers/hooks/use-teachers'
 import { EmptyState } from '@/shared/components/feedback/empty-state'
@@ -25,8 +26,8 @@ export default function EvaluationsQueuePage() {
   const caveId =
     selectedContext?.role === 'academy' ? (selectedContext.caveId ?? '') : ''
   const ownTeacherId = isTeacher ? (session?.teacherId ?? '') : ''
-  const [status, setStatus] = useState<EvaluationStatus>(
-    isTeacher ? 'SCHEDULED' : 'PENDING',
+  const [status, setStatus] = useState<EvaluationFilterStatus>(
+    isTeacher ? 'SCHEDULED' : 'OPEN',
   )
   const [date, setDate] = useState('')
   const [teacherFilter, setTeacherFilter] = useState('')
@@ -74,6 +75,7 @@ export default function EvaluationsQueuePage() {
             e registre a decisão do professor.
           </p>
         </header>
+        {selectedContext?.role === 'academy' ? <EntryVerifyPanel /> : null}
 
         <section
           className="mt-8 rounded-xl border border-border bg-card p-4"
@@ -87,11 +89,11 @@ export default function EvaluationsQueuePage() {
                 value={status}
                 onChange={(event) =>
                   changeFilter(setStatus)(
-                    event.target.value as EvaluationStatus,
+                    event.target.value as EvaluationFilterStatus,
                   )
                 }
               >
-                {EVALUATION_STATUSES.map((value) => (
+                {(['OPEN', ...EVALUATION_STATUSES] as const).map((value) => (
                   <option key={value} value={value}>
                     {EVALUATION_STATUS_LABELS[value]}
                   </option>

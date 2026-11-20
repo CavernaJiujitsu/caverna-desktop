@@ -304,18 +304,14 @@ export default function PlatformCaveDetailPage() {
               </h2>
               {isPlatformAdmin && (
                 <Button
-                  type="button"
+                  asChild
                   size="sm"
                   variant="outline"
-                  disabled={unitsQuery.isPending || unitsQuery.isError}
-                  onClick={() => {
-                    notify.info(
-                      'Gerenciamento de unidades ainda não implementado nesta versão.',
-                    )
-                  }}
                 >
-                  <Plus className="size-3 mr-1" aria-hidden="true" />
-                  Nova unidade
+                  <Link to={`${routes.units}?caveId=${encodeURIComponent(caveId)}`}>
+                    <Plus className="size-3 mr-1" aria-hidden="true" />
+                    Nova unidade
+                  </Link>
                 </Button>
               )}
             </div>

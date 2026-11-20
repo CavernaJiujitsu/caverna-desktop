@@ -12,6 +12,7 @@ const TEACHER_ID = 'e38cab78-a65e-424e-9319-f4db38155202'
 const mocks = vi.hoisted(() => ({
   role: 'academy' as 'academy' | 'teacher',
   useClasses: vi.fn(),
+  useClass: vi.fn(),
   useScopeUnits: vi.fn(),
   useTeacherOptions: vi.fn(),
   refetchUnits: vi.fn(),
@@ -54,10 +55,16 @@ vi.mock('@/features/teachers/hooks/use-teachers', () => ({
 
 vi.mock('@/features/classes/hooks/use-classes', () => ({
   useClasses: mocks.useClasses,
-  useClass: () => ({ isPending: true }),
+  useClass: mocks.useClass,
   useClassMutations: () => ({
     remove: { isPending: false, mutateAsync: vi.fn() },
   }),
+}))
+
+vi.mock('@/features/classes/components/class-attendance-panel', () => ({
+  ClassAttendancePanel: ({ item }: { item: ClassItem }) => (
+    <div>Chamada da unidade {item.caveUnitName}</div>
+  ),
 }))
 
 function classItem(overrides: Partial<ClassItem> = {}): ClassItem {
@@ -116,6 +123,7 @@ beforeEach(() => {
     refetch: mocks.refetchTeachers,
   })
   mocks.useClasses.mockReturnValue(classPage([classItem()]))
+  mocks.useClass.mockReturnValue({ isPending: true })
 })
 
 describe('ClassesManagementPage', () => {
@@ -132,11 +140,10 @@ describe('ClassesManagementPage', () => {
     expect(lastQuery().teacherId).toBeUndefined()
     expect(lastQuery()).not.toHaveProperty('limit')
     expect(
-      within(screen.getByRole('list', { name: 'Aulas' })).getAllByRole(
-        'listitem',
-      ),
-    ).toHaveLength(1)
+      within(screen.getByRole('table', { name: 'Aulas' })).getAllByRole('row'),
+    ).toHaveLength(2)
     expect(screen.getByText('41 aula(s)')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Vagas' })).toBeInTheDocument()
   })
 
   it('pins a teacher context to its own classes without a cave', () => {
@@ -145,6 +152,19 @@ describe('ClassesManagementPage', () => {
 
     expect(lastQuery()).toMatchObject({ teacherId: TEACHER_ID, page: 1 })
     expect(lastQuery().caveId).toBeUndefined()
+  })
+
+  it('opens the attendance panel from the compact class table', async () => {
+    mocks.useClass.mockReturnValue({ isPending: false, isError: false, data: classItem() })
+    mocks.useClasses.mockReturnValue(classPage([classItem({ enrolledCount: 8 })]))
+    renderPage()
+
+    expect(screen.getByRole('table', { name: 'Aulas' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Unidade' })).toBeInTheDocument()
+    expect(screen.getByText('8 de 20')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Chamada' }))
+
+    expect(screen.getByText('Chamada da unidade Consolação')).toBeInTheDocument()
   })
 
   it('navigates server pages and returns to the first one when a filter changes', async () => {
@@ -260,7 +280,7 @@ describe('ClassesManagementPage', () => {
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent('Não foi possível carregar as unidades.')
     // The class list does not depend on the units, so it stays available.
-    expect(screen.getByRole('list', { name: 'Aulas' })).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Aulas' })).toBeInTheDocument()
     expect(
       screen.queryByText('Nenhuma aula encontrada'),
     ).not.toBeInTheDocument()
