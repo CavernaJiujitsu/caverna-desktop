@@ -55,6 +55,88 @@ function formatTime(iso: string): string {
   })
 }
 
+const CLASSES_PER_PAGE = 8
+
+export function UnitClassesPreview({
+  unitName,
+  items,
+  loading,
+}: {
+  unitName: string
+  items: ClassItem[]
+  loading: boolean
+}) {
+  const [page, setPage] = useState(1)
+  const totalPages = Math.max(1, Math.ceil(items.length / CLASSES_PER_PAGE))
+  const currentPage = Math.min(page, totalPages)
+  const first = (currentPage - 1) * CLASSES_PER_PAGE
+
+  return (
+    <div className="border-t border-border pt-3">
+      <p className="mb-2 text-sm font-semibold">Aulas ({items.length})</p>
+      {loading ? (
+        <LoadingState label="Carregando aulas…" />
+      ) : items.length === 0 ? (
+        <EmptyState
+          title="Nenhuma aula"
+          description="Nenhuma aula encontrada nesta unidade."
+        />
+      ) : (
+        <>
+          <ul
+            className="divide-y divide-border"
+            aria-label={`Aulas da unidade ${unitName}`}
+          >
+            {items.slice(first, first + CLASSES_PER_PAGE).map((classItem) => (
+              <li key={classItem.id} className="p-3">
+                <p className="text-sm font-medium">
+                  {classItem.teacherName ?? 'Professor'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(classItem.startsAt)} ·
+                  {formatTime(classItem.startsAt)} –
+                  {formatTime(classItem.endsAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+          {totalPages > 1 && (
+            <nav
+              aria-label={`Paginação das aulas de ${unitName}`}
+              className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3"
+            >
+              <span className="text-xs text-muted-foreground">
+                {first + 1}–{Math.min(first + CLASSES_PER_PAGE, items.length)}{' '}
+                de {items.length} · Página {currentPage} de {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  Próxima
+                </Button>
+              </div>
+            </nav>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function PlatformCaveDetailPage() {
   const { caveId = '' } = useParams<{ caveId: string }>()
   const navigate = useNavigate()
@@ -303,12 +385,10 @@ export default function PlatformCaveDetailPage() {
                 Unidades
               </h2>
               {isPlatformAdmin && (
-                <Button
-                  asChild
-                  size="sm"
-                  variant="outline"
-                >
-                  <Link to={`${routes.units}?caveId=${encodeURIComponent(caveId)}`}>
+                <Button asChild size="sm" variant="outline">
+                  <Link
+                    to={`${routes.units}?caveId=${encodeURIComponent(caveId)}`}
+                  >
                     <Plus className="size-3 mr-1" aria-hidden="true" />
                     Nova unidade
                   </Link>
@@ -375,40 +455,12 @@ export default function PlatformCaveDetailPage() {
                             )}
                           </div>
                         </div>
-                        <div className="border-t border-border pt-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span
-                              className="size-4 text-muted-foreground"
-                              aria-hidden="true"
-                            />
-                            <span className="text-sm font-semibold">
-                              Aulas ({unitClasses.length})
-                            </span>
-                          </div>
-                          {isLoading ? (
-                            <LoadingState label="Carregando aulas…" />
-                          ) : unitClasses.length === 0 ? (
-                            <EmptyState
-                              title="Nenhuma aula"
-                              description="Nenhuma aula encontrada nesta unidade."
-                            />
-                          ) : (
-                            <ul className="divide-y divide-border">
-                              {unitClasses.map((classItem) => (
-                                <li key={classItem.id} className="p-3">
-                                  <p className="text-sm font-medium">
-                                    {classItem.teacherName ?? 'Professor'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {formatDate(classItem.startsAt)} ·
-                                    {formatTime(classItem.startsAt)} –
-                                    {formatTime(classItem.endsAt)}
-                                  </p>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
+                        <UnitClassesPreview
+                          key={`${unit.id}:${dateParam ?? ''}`}
+                          unitName={unit.name}
+                          items={unitClasses}
+                          loading={isLoading}
+                        />
                       </div>
                     )
                   })}
