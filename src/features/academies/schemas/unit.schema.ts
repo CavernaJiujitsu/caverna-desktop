@@ -48,6 +48,12 @@ export const createUnitFormSchema = unitFormBaseSchema.superRefine(
         message: 'Informe a longitude.',
         path: ['longitude'],
       })
+    if (values.latitude === 0 && values.longitude === 0)
+      context.addIssue({
+        code: 'custom',
+        message: 'Informe a localização real, não 0,0.',
+        path: ['latitude'],
+      })
   },
 )
 
@@ -60,6 +66,12 @@ export const updateUnitFormSchema = unitFormBaseSchema.superRefine(
         path: values.latitude === undefined ? ['latitude'] : ['longitude'],
       })
     }
+    if (values.latitude === 0 && values.longitude === 0)
+      context.addIssue({
+        code: 'custom',
+        message: 'Informe a localização real, não 0,0.',
+        path: ['latitude'],
+      })
   },
 )
 

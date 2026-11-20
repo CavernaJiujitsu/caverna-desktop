@@ -40,6 +40,7 @@ export type PractitionerInput = {
   name: string
   email: string
   password: string
+  address?: string
   latitude?: number
   longitude?: number
 }
@@ -63,6 +64,7 @@ export const practitionerCreateFormSchema = z
     email: z.string().trim().email('Informe um e-mail válido.'),
     password: z.string().min(8, 'A senha deve ter pelo menos 8 caracteres.'),
     confirmPassword: z.string(),
+    address: z.string().trim().min(1, 'Informe o endereço.').max(500),
     latitude: optionalCoordinate(-90, 90, 'latitude'),
     longitude: optionalCoordinate(-180, 180, 'longitude'),
   })
@@ -74,6 +76,20 @@ export const practitionerCreateFormSchema = z
     message: 'Informe latitude e longitude juntas.',
     path: ['longitude'],
   })
+  .refine((data) => data.latitude !== '' && data.longitude !== '', {
+    message: 'Informe as coordenadas do endereço.',
+    path: ['latitude'],
+  })
+  .refine(
+    (data) =>
+      data.latitude === '' ||
+      data.longitude === '' ||
+      !(Number(data.latitude) === 0 && Number(data.longitude) === 0),
+    {
+      message: 'Informe a localização real, não 0,0.',
+      path: ['latitude'],
+    },
+  )
 
 export type PractitionerCreateFormValues = z.infer<
   typeof practitionerCreateFormSchema

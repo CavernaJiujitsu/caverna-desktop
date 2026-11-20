@@ -1,5 +1,5 @@
 import { LoaderCircle, UserPlus } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   practitionerCreateFormSchema,
@@ -7,6 +7,7 @@ import {
   type PractitionerInput,
 } from '@/features/practitioners/schemas/practitioner.schema'
 import { useCreatePractitioner } from '@/features/practitioners/hooks/use-practitioners'
+import { AddressLocator } from '@/shared/components/address-locator'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { notify } from '@/shared/lib/notifications'
@@ -19,6 +20,8 @@ export function PractitionerCreateForm() {
     register,
     handleSubmit,
     reset,
+    control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<PractitionerCreateFormValues>({
     resolver: zodResolver(practitionerCreateFormSchema),
@@ -27,10 +30,12 @@ export function PractitionerCreateForm() {
       email: '',
       password: '',
       confirmPassword: '',
+      address: '',
       latitude: '',
       longitude: '',
     },
   })
+  const locationValues = useWatch({ control })
 
   async function submit(values: PractitionerCreateFormValues) {
     try {
@@ -40,6 +45,7 @@ export function PractitionerCreateForm() {
         name: values.name,
         email: values.email,
         password: values.password,
+        address: values.address,
         ...(latitude !== undefined && longitude !== undefined
           ? { latitude, longitude }
           : {}),
@@ -113,42 +119,53 @@ export function PractitionerCreateForm() {
         )}
       </label>
       <div className="pt-2 border-t border-border">
-        <h3 className="text-sm font-semibold text-muted-foreground">
-          Coordenadas
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Opcional. Informe latitude e longitude juntas.
-        </p>
-        <div className="grid gap-3 md:grid-cols-2 mt-2">
-          <label className="grid gap-2 text-sm font-medium">
-            Latitude
-            <Input
-              aria-invalid={Boolean(errors.latitude)}
-              type="number"
-              step="any"
-              {...register('latitude')}
-            />
-            {errors.latitude && (
-              <span className="text-xs text-destructive">
-                {errors.latitude.message}
-              </span>
-            )}
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Longitude
-            <Input
-              aria-invalid={Boolean(errors.longitude)}
-              type="number"
-              step="any"
-              {...register('longitude')}
-            />
-            {errors.longitude && (
-              <span className="text-xs text-destructive">
-                {errors.longitude.message}
-              </span>
-            )}
-          </label>
-        </div>
+        <AddressLocator
+          id="student"
+          value={{
+            address: locationValues.address ?? '',
+            latitude:
+              locationValues.latitude === ''
+                ? undefined
+                : Number(locationValues.latitude),
+            longitude:
+              locationValues.longitude === ''
+                ? undefined
+                : Number(locationValues.longitude),
+          }}
+          onChange={(location) => {
+            setValue('address', location.address, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+            setValue(
+              'latitude',
+              location.latitude === undefined ? '' : String(location.latitude),
+              { shouldDirty: true, shouldValidate: true },
+            )
+            setValue(
+              'longitude',
+              location.longitude === undefined
+                ? ''
+                : String(location.longitude),
+              { shouldDirty: true, shouldValidate: true },
+            )
+          }}
+        />
+        {errors.address && (
+          <p role="alert" className="text-sm text-destructive">
+            {errors.address.message}
+          </p>
+        )}
+        {errors.latitude && (
+          <p role="alert" className="text-sm text-destructive">
+            {errors.latitude.message}
+          </p>
+        )}
+        {errors.longitude && (
+          <p role="alert" className="text-sm text-destructive">
+            {errors.longitude.message}
+          </p>
+        )}
       </div>
       <div className="mt-4 flex items-center gap-3">
         <Button type="button" variant="outline" onClick={() => reset()}>

@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
+import { AddressLocator } from '@/shared/components/address-locator'
 import {
   createUnitFormSchema,
   updateUnitFormSchema,
@@ -14,8 +14,9 @@ import { Input } from '@/shared/components/ui/input'
 import { notify } from '@/shared/lib/notifications'
 import { AppError } from '@/shared/types/app-error'
 
-function coordinateValue(value: string | number | null | undefined) {
+function coordinateValue(value: unknown) {
   if (value === null || value === undefined || value === '') return undefined
+  if (typeof value !== 'number' && typeof value !== 'string') return undefined
   const parsed = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(parsed) ? parsed : undefined
 }
@@ -35,7 +36,6 @@ export function UnitForm({
   unit?: AcademyUnit
   onDone?: () => void
 }) {
-  const [locationMessage, setLocationMessage] = useState('')
   const mutations = useUnitManagementMutations(caveId)
   const schema = unit ? updateUnitFormSchema : createUnitFormSchema
   const form = useForm<UnitFormInput, unknown, UnitFormValues>({
@@ -48,40 +48,16 @@ export function UnitForm({
       longitude: coordinateValue(unit?.longitude),
     },
   })
-
-  function useCurrentLocation() {
-    setLocationMessage('')
-    if (!navigator.geolocation) {
-      setLocationMessage(
-        'Localização indisponível neste navegador. Informe as coordenadas manualmente.',
-      )
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        form.setValue('latitude', coords.latitude, {
-          shouldDirty: true,
-          shouldValidate: true,
-        })
-        form.setValue('longitude', coords.longitude, {
-          shouldDirty: true,
-          shouldValidate: true,
-        })
-        setLocationMessage('Coordenadas atuais preenchidas.')
-      },
-      (error) => {
-        setLocationMessage(
-          error.code === error.PERMISSION_DENIED
-            ? 'Permita a localização nas configurações do navegador ou informe as coordenadas manualmente.'
-            : 'Não foi possível obter sua localização. Informe as coordenadas manualmente.',
-        )
-      },
-      { enableHighAccuracy: true, timeout: 10_000 },
-    )
-  }
+  const locationValues = useWatch({ control: form.control })
 
   async function submit(values: UnitFormValues) {
+    if (!values.address?.trim()) {
+      form.setError('address', {
+        type: 'validate',
+        message: 'Informe o endereço.',
+      })
+      return
+    }
     try {
       if (unit) {
         const originalLatitude = coordinateValue(unit.latitude)
@@ -168,98 +144,50 @@ export function UnitForm({
           </span>
         )}
       </label>
-      <label
-        className="grid gap-1.5 text-sm font-medium"
-        htmlFor="unit-address"
-      >
-        Endereço (opcional)
-        <Input id="unit-address" {...form.register('address')} />
-      </label>
+      <AddressLocator
+        id="unit"
+        value={{
+          address: locationValues.address ?? '',
+          latitude: coordinateValue(locationValues.latitude),
+          longitude: coordinateValue(locationValues.longitude),
+        }}
+        onChange={(location) => {
+          form.setValue('address', location.address, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+          form.setValue('latitude', location.latitude, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+          form.setValue('longitude', location.longitude, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }}
+      />
+      {form.formState.errors.address && (
+        <p role="alert" className="text-sm text-destructive">
+          {form.formState.errors.address.message}
+        </p>
+      )}
+      {form.formState.errors.latitude && (
+        <p role="alert" className="text-sm text-destructive">
+          {form.formState.errors.latitude.message}
+        </p>
+      )}
+      {form.formState.errors.longitude && (
+        <p role="alert" className="text-sm text-destructive">
+          {form.formState.errors.longitude.message}
+        </p>
+      )}
       <label
         className="grid gap-1.5 text-sm font-medium"
         htmlFor="unit-neighborhood"
       >
-        Bairro (opcional)
+        Bairro (opcional; ajuste após escolher o endereço)
         <Input id="unit-neighborhood" {...form.register('neighborhood')} />
       </label>
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium">Localização</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={useCurrentLocation}
-          >
-            Usar localização atual
-          </Button>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Permita a localização no navegador ou informe as coordenadas
-          manualmente. Endereço não é convertido automaticamente.
-        </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label
-            className="grid gap-1.5 text-sm font-medium"
-            htmlFor="unit-latitude"
-          >
-            Latitude
-            <Input
-              id="unit-latitude"
-              type="number"
-              step="any"
-              aria-invalid={Boolean(form.formState.errors.latitude)}
-              aria-describedby={
-                form.formState.errors.latitude
-                  ? 'unit-latitude-error'
-                  : undefined
-              }
-              {...form.register('latitude', { valueAsNumber: true })}
-            />
-            {form.formState.errors.latitude && (
-              <span
-                id="unit-latitude-error"
-                role="alert"
-                className="text-destructive"
-              >
-                {form.formState.errors.latitude.message}
-              </span>
-            )}
-          </label>
-          <label
-            className="grid gap-1.5 text-sm font-medium"
-            htmlFor="unit-longitude"
-          >
-            Longitude
-            <Input
-              id="unit-longitude"
-              type="number"
-              step="any"
-              aria-invalid={Boolean(form.formState.errors.longitude)}
-              aria-describedby={
-                form.formState.errors.longitude
-                  ? 'unit-longitude-error'
-                  : undefined
-              }
-              {...form.register('longitude', { valueAsNumber: true })}
-            />
-            {form.formState.errors.longitude && (
-              <span
-                id="unit-longitude-error"
-                role="alert"
-                className="text-destructive"
-              >
-                {form.formState.errors.longitude.message}
-              </span>
-            )}
-          </label>
-        </div>
-        {locationMessage && (
-          <p className="mt-2 text-sm text-muted-foreground" role="status">
-            {locationMessage}
-          </p>
-        )}
-      </div>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={isPending}>
           {isPending

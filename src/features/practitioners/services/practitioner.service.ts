@@ -75,6 +75,7 @@ export const practitionerService = {
           email: input.email,
           password: input.password,
         },
+        ...(input.address ? { address: input.address } : {}),
         ...(input.latitude !== undefined && input.longitude !== undefined
           ? {
               coordinates: {

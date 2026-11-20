@@ -64,7 +64,7 @@ beforeEach(() => {
   })
 })
 
-it('exibe o form de cadastro com conta e coordenadas opcionais', () => {
+it('exibe o form de cadastro com endereço e coordenadas', () => {
   renderPage(caveAdminContext)
 
   expect(
@@ -74,9 +74,9 @@ it('exibe o form de cadastro com conta e coordenadas opcionais', () => {
   expect(screen.getByLabelText('E-mail')).toBeInTheDocument()
   expect(screen.getByLabelText('Senha')).toBeInTheDocument()
   expect(screen.getByLabelText('Confirmar senha')).toBeInTheDocument()
-  expect(screen.getByLabelText('Latitude')).toBeInTheDocument()
-  expect(screen.getByLabelText('Longitude')).toBeInTheDocument()
-  expect(screen.queryByLabelText('Logradouro')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Endereço')).toBeInTheDocument()
+  expect(screen.getByLabelText('student latitude')).toBeInTheDocument()
+  expect(screen.getByLabelText('student longitude')).toBeInTheDocument()
   expect(
     screen.getByRole('button', { name: 'Cadastrar aluno' }),
   ).toBeInTheDocument()
@@ -89,6 +89,9 @@ it('cadastra o aluno com dados obrigatórios preenchidos', async () => {
   await userEvent.type(screen.getByLabelText('E-mail'), 'aluno@caverna.com')
   await userEvent.type(screen.getByLabelText('Senha'), 'senha1234')
   await userEvent.type(screen.getByLabelText('Confirmar senha'), 'senha1234')
+  await userEvent.type(screen.getByLabelText('Endereço'), 'Rua Manual, 42')
+  await userEvent.type(screen.getByLabelText('student latitude'), '-23.5')
+  await userEvent.type(screen.getByLabelText('student longitude'), '-46.6')
 
   await userEvent.click(screen.getByRole('button', { name: 'Cadastrar aluno' }))
 
@@ -97,6 +100,9 @@ it('cadastra o aluno com dados obrigatórios preenchidos', async () => {
       name: 'Aluno Teste',
       email: 'aluno@caverna.com',
       password: 'senha1234',
+      address: 'Rua Manual, 42',
+      latitude: -23.5,
+      longitude: -46.6,
     }),
   )
 })

@@ -1,14 +1,14 @@
 import { LoaderCircle, Plus, Trash2 } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { routes } from '@/app/router/routes'
 import { ManagementShell } from '@/features/management/components/management-shell'
 import { useCreatePlatformCave } from '@/features/platform/hooks/use-platform-caves'
 import { PageHeader } from '@/shared/components/layout/page-header'
 import { Button } from '@/shared/components/ui/button'
+import { AddressLocator } from '@/shared/components/address-locator'
 import { Input } from '@/shared/components/ui/input'
 import { notify } from '@/shared/lib/notifications'
 import { AppError } from '@/shared/types/app-error'
@@ -17,17 +17,25 @@ function messageForError(error: unknown, fallback: string) {
   return error instanceof AppError ? error.message : fallback
 }
 
-const unitSchema = z.object({
-  name: z.string().trim().min(1, 'Informe o nome da unidade.'),
-  address: z.string().trim().optional(),
-  neighborhood: z.string().trim().optional(),
-  latitude: z
-    .preprocess((val) => Number(val), z.number().finite('Latitude inválida.'))
-    .refine((v) => v >= -90 && v <= 90, 'Latitude entre -90 e 90.'),
-  longitude: z
-    .preprocess((val) => Number(val), z.number().finite('Longitude inválida.'))
-    .refine((v) => v >= -180 && v <= 180, 'Longitude entre -180 e 180.'),
-})
+const unitSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Informe o nome da unidade.'),
+    address: z.string().trim().min(1, 'Informe o endereço.').max(500),
+    neighborhood: z.string().trim().optional(),
+    latitude: z
+      .preprocess((val) => Number(val), z.number().finite('Latitude inválida.'))
+      .refine((v) => v >= -90 && v <= 90, 'Latitude entre -90 e 90.'),
+    longitude: z
+      .preprocess(
+        (val) => Number(val),
+        z.number().finite('Longitude inválida.'),
+      )
+      .refine((v) => v >= -180 && v <= 180, 'Longitude entre -180 e 180.'),
+  })
+  .refine((unit) => !(unit.latitude === 0 && unit.longitude === 0), {
+    message: 'Informe a localização real, não 0,0.',
+    path: ['latitude'],
+  })
 
 const formSchema = z.object({
   name: z.string().trim().min(1, 'Informe o nome da caverna.'),
@@ -36,38 +44,58 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
+function finiteCoordinate(value: unknown): number | undefined {
+  if (typeof value !== 'number' && typeof value !== 'string') return undefined
+  if (value === '') return undefined
+  const number = Number(value)
+  return Number.isFinite(number) ? number : undefined
+}
+
 export default function PlatformCaveCreatePage() {
   const navigate = useNavigate()
   const createCave = useCreatePlatformCave()
-  const [units, setUnits] = useState<z.infer<typeof unitSchema>[]>([
-    { name: '', address: '', neighborhood: '', latitude: 0, longitude: 0 },
-  ])
-
   const {
+    control,
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       units: [
-        { name: '', address: '', neighborhood: '', latitude: 0, longitude: 0 },
+        {
+          name: '',
+          address: '',
+          neighborhood: '',
+          latitude: Number.NaN,
+          longitude: Number.NaN,
+        },
       ],
     },
   })
+  const {
+    fields: units,
+    append,
+    remove,
+  } = useFieldArray({ control, name: 'units' })
+  const unitValues = useWatch({ control, name: 'units' })
 
   const addUnit = () => {
-    setUnits((prev) => [
-      ...prev,
-      { name: '', address: '', neighborhood: '', latitude: 0, longitude: 0 },
-    ])
+    append({
+      name: '',
+      address: '',
+      neighborhood: '',
+      latitude: Number.NaN,
+      longitude: Number.NaN,
+    })
   }
 
   const removeUnit = (index: number) => {
     if (units.length <= 1) return
-    setUnits((prev) => prev.filter((_, i) => i !== index))
+    remove(index)
   }
 
   async function submit(values: FormValues) {
@@ -121,9 +149,9 @@ export default function PlatformCaveCreatePage() {
             juntas.
           </p>
           <div className="mt-3 space-y-3">
-            {units.map((_unit, index) => (
+            {units.map((unit, index) => (
               <div
-                key={index}
+                key={unit.id}
                 className="rounded-lg border border-border bg-card p-4"
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
@@ -155,41 +183,54 @@ export default function PlatformCaveCreatePage() {
                       </span>
                     )}
                   </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Endereço
-                    <Input {...register(`units.${index}.address`)} />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Bairro
-                    <Input {...register(`units.${index}.neighborhood`)} />
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Latitude
-                    <Input
-                      type="number"
-                      step="any"
-                      aria-invalid={Boolean(errors.units?.[index]?.latitude)}
-                      {...register(`units.${index}.latitude`)}
+                  <div className="md:col-span-2">
+                    <AddressLocator
+                      id={`cave-unit-${unit.id}`}
+                      value={{
+                        address: unitValues?.[index]?.address ?? '',
+                        latitude: finiteCoordinate(
+                          unitValues?.[index]?.latitude,
+                        ),
+                        longitude: finiteCoordinate(
+                          unitValues?.[index]?.longitude,
+                        ),
+                      }}
+                      onChange={(location) => {
+                        setValue(`units.${index}.address`, location.address, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                        setValue(
+                          `units.${index}.latitude`,
+                          location.latitude ?? Number.NaN,
+                          { shouldDirty: true, shouldValidate: true },
+                        )
+                        setValue(
+                          `units.${index}.longitude`,
+                          location.longitude ?? Number.NaN,
+                          { shouldDirty: true, shouldValidate: true },
+                        )
+                      }}
                     />
+                    {errors.units?.[index]?.address && (
+                      <span role="alert" className="text-xs text-destructive">
+                        {errors.units[index].address.message}
+                      </span>
+                    )}
                     {errors.units?.[index]?.latitude && (
-                      <span className="text-xs text-destructive">
+                      <span role="alert" className="text-xs text-destructive">
                         {errors.units[index].latitude.message}
                       </span>
                     )}
-                  </label>
-                  <label className="grid gap-2 text-sm font-medium">
-                    Longitude
-                    <Input
-                      type="number"
-                      step="any"
-                      aria-invalid={Boolean(errors.units?.[index]?.longitude)}
-                      {...register(`units.${index}.longitude`)}
-                    />
                     {errors.units?.[index]?.longitude && (
-                      <span className="text-xs text-destructive">
+                      <span role="alert" className="text-xs text-destructive">
                         {errors.units[index].longitude.message}
                       </span>
                     )}
+                  </div>
+                  <label className="grid gap-2 text-sm font-medium">
+                    Bairro
+                    <Input {...register(`units.${index}.neighborhood`)} />
                   </label>
                 </div>
               </div>

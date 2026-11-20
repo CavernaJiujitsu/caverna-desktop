@@ -8,6 +8,11 @@ import { notify } from '@/shared/lib/notifications'
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
+  search: vi.fn(),
+  reverse: vi.fn(),
+}))
+vi.mock('@/shared/lib/address-lookup', () => ({
+  addressLookup: { search: mocks.search, reverse: mocks.reverse },
 }))
 
 vi.mock('@/features/academies/hooks/use-academies', () => ({
@@ -39,11 +44,11 @@ it('validates required fields and coordinate ranges before creating', async () =
     'Unidade Inválida',
   )
   await userEvent.type(
-    screen.getByRole('spinbutton', { name: /Latitude/ }),
+    screen.getByRole('spinbutton', { name: /unit latitude/ }),
     '91',
   )
   await userEvent.type(
-    screen.getByRole('spinbutton', { name: /Longitude/ }),
+    screen.getByRole('spinbutton', { name: /unit longitude/ }),
     '-46',
   )
   await userEvent.click(screen.getByRole('button', { name: 'Criar unidade' }))
@@ -63,6 +68,11 @@ it('uses browser GPS coordinates and submits numeric values', async () => {
     value: { getCurrentPosition },
   })
   mocks.create.mockResolvedValue({})
+  mocks.reverse.mockResolvedValue({
+    address: 'Rua GPS, São Paulo',
+    latitude: -23.55,
+    longitude: -46.63,
+  })
 
   render(<UnitForm caveId="cave-1" />)
   await userEvent.type(
@@ -72,11 +82,15 @@ it('uses browser GPS coordinates and submits numeric values', async () => {
   await userEvent.click(
     screen.getByRole('button', { name: 'Usar localização atual' }),
   )
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'Rua GPS, São Paulo' }),
+  )
   await userEvent.click(screen.getByRole('button', { name: 'Criar unidade' }))
 
   await waitFor(() =>
     expect(mocks.create).toHaveBeenCalledWith({
       name: 'Unidade GPS',
+      address: 'Rua GPS, São Paulo',
       latitude: -23.55,
       longitude: -46.63,
     }),
@@ -96,10 +110,14 @@ it('explains unavailable GPS and keeps manual coordinates usable', async () => {
   )
 
   expect(screen.getByRole('status')).toHaveTextContent(
-    'Localização indisponível neste navegador. Informe as coordenadas manualmente.',
+    'Localização indisponível. Informe endereço e coordenadas manualmente.',
   )
-  expect(screen.getByRole('spinbutton', { name: /Latitude/ })).toBeEnabled()
-  expect(screen.getByRole('spinbutton', { name: /Longitude/ })).toBeEnabled()
+  expect(
+    screen.getByRole('spinbutton', { name: /unit latitude/ }),
+  ).toBeEnabled()
+  expect(
+    screen.getByRole('spinbutton', { name: /unit longitude/ }),
+  ).toBeEnabled()
 })
 
 it('sends only modified fields when editing', async () => {
@@ -142,11 +160,15 @@ it('surfaces API errors without reporting a successful save', async () => {
 
   await userEvent.type(screen.getByRole('textbox', { name: /Nome/ }), 'Unidade')
   await userEvent.type(
-    screen.getByRole('spinbutton', { name: /Latitude/ }),
+    screen.getByRole('textbox', { name: 'Endereço' }),
+    'Rua Manual',
+  )
+  await userEvent.type(
+    screen.getByRole('spinbutton', { name: /unit latitude/ }),
     '-23',
   )
   await userEvent.type(
-    screen.getByRole('spinbutton', { name: /Longitude/ }),
+    screen.getByRole('spinbutton', { name: /unit longitude/ }),
     '-46',
   )
   await userEvent.click(screen.getByRole('button', { name: 'Criar unidade' }))
