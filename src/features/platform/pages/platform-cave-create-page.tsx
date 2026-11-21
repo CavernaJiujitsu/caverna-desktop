@@ -185,6 +185,7 @@ export default function PlatformCaveCreatePage() {
                   </label>
                   <div className="md:col-span-2">
                     <AddressLocator
+                      showMap
                       id={`cave-unit-${unit.id}`}
                       value={{
                         address: unitValues?.[index]?.address ?? '',

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { addressLookup, type AddressResult } from '@/shared/lib/address-lookup'
+import { MapPreview } from '@/shared/components/map-preview'
 
 export type AddressLocation = {
   address: string
@@ -13,10 +14,12 @@ export function AddressLocator({
   value,
   onChange,
   id,
+  showMap = false,
 }: {
   value: AddressLocation
   onChange: (value: AddressLocation) => void
   id: string
+  showMap?: boolean
 }) {
   const [suggestions, setSuggestions] = useState<AddressResult[]>([])
   const [message, setMessage] = useState('')
@@ -224,6 +227,7 @@ export function AddressLocator({
           />
         </label>
       </div>
+      {showMap && <MapPreview latitude={value.latitude} longitude={value.longitude} />}
       <p className="text-xs text-muted-foreground">
         Confirme endereço e coordenadas antes de salvar. Se a busca falhar,
         preencha o endereço e use as coordenadas do dispositivo ou informe ambas

@@ -145,6 +145,7 @@ export function UnitForm({
         )}
       </label>
       <AddressLocator
+        showMap
         id="unit"
         value={{
           address: locationValues.address ?? '',
