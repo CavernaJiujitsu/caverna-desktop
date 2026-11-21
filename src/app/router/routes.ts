@@ -16,6 +16,7 @@ export const routes = {
   platformCavesCreate: '/platform/caves/create',
   caveAdministrators: '/administradores',
   platformUsers: '/platform/users',
+  graduationCatalog: '/platform/graduation-catalog',
   trainings: '/trainings',
   management: '/management',
   accessDenied: '/access-denied',
@@ -47,6 +48,7 @@ export const routeContextRoles = {
   platformCavesCreate: platformContexts,
   caveAdministrators: academyManagementContexts,
   platformUsers: platformContexts,
+  graduationCatalog: platformContexts,
   trainings: academyManagementContexts,
 } as const satisfies Partial<
   Record<keyof typeof routes, readonly ManagementRole[]>

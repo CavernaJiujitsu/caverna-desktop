@@ -13,6 +13,7 @@ const navigationByRole: Record<ManagementRole, NavigationItem[]> = {
     { to: routes.platformCaves, label: 'Cavernas' },
     { to: routes.units, label: 'Unidades' },
     { to: routes.platformUsers, label: 'Usuários e acessos' },
+    { to: routes.graduationCatalog, label: 'Catálogo de faixas' },
     { to: routes.caveAdministrators, label: 'Administradores' },
     { to: routes.teachers, label: 'Professores' },
     { to: routes.memberships, label: 'Alunos' },

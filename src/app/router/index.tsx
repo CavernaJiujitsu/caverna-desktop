@@ -60,6 +60,7 @@ const PlatformCaveDetailPage = lazy(
 const PlatformUsersPage = lazy(
   () => import('@/features/platform/pages/platform-users-page'),
 )
+const CatalogPage = lazy(() => import('@/features/belts/pages/catalog-page'))
 const TrainingsPage = lazy(
   () => import('@/features/trainings/pages/trainings-page'),
 )
@@ -71,6 +72,15 @@ const loading = <LoadingState label="Carregando página" />
 const wrap = (page: ReactNode) => <Suspense fallback={loading}>{page}</Suspense>
 
 export const router = createBrowserRouter([
+  {
+    path: routes.graduationCatalog,
+    element: (
+      <ProtectedRoute allowedContextRoles={[...routeContextRoles.graduationCatalog]}>
+        {wrap(<CatalogPage />)}
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorPage />,
+  },
   {
     path: routes.home,
     element: <AuthLayout />,
