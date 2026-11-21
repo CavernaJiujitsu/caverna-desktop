@@ -94,3 +94,13 @@ button {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Native select popups need their own palette in dark surfaces. */
+:is(.dark, .management-surface) select {
+  color-scheme: dark;
+}
+
+:is(.dark, .management-surface) select option {
+  background-color: var(--card);
+  color: var(--foreground);
+}
