@@ -143,7 +143,9 @@ describe('ClassesManagementPage', () => {
       within(screen.getByRole('table', { name: 'Aulas' })).getAllByRole('row'),
     ).toHaveLength(2)
     expect(screen.getByText('41 aula(s)')).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Vagas' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'Vagas' }),
+    ).toBeInTheDocument()
   })
 
   it('pins a teacher context to its own classes without a cave', () => {
@@ -155,16 +157,26 @@ describe('ClassesManagementPage', () => {
   })
 
   it('opens the attendance panel from the compact class table', async () => {
-    mocks.useClass.mockReturnValue({ isPending: false, isError: false, data: classItem() })
-    mocks.useClasses.mockReturnValue(classPage([classItem({ enrolledCount: 8 })]))
+    mocks.useClass.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: classItem(),
+    })
+    mocks.useClasses.mockReturnValue(
+      classPage([classItem({ enrolledCount: 8 })]),
+    )
     renderPage()
 
     expect(screen.getByRole('table', { name: 'Aulas' })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: 'Unidade' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'Unidade' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('8 de 20')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Chamada' }))
 
-    expect(screen.getByText('Chamada da unidade Consolação')).toBeInTheDocument()
+    expect(
+      screen.getByText('Chamada da unidade Consolação'),
+    ).toBeInTheDocument()
   })
 
   it('navigates server pages and returns to the first one when a filter changes', async () => {

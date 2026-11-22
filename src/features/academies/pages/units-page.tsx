@@ -214,88 +214,118 @@ export default function UnitsPage() {
                 />
               ) : (
                 <>
-                   <div className="overflow-x-auto rounded-xl border border-border bg-card">
-                     <table className="w-full min-w-[680px] text-left text-sm" aria-label="Unidades da caverna">
-                       <thead className="border-b border-border bg-accent/40 text-xs uppercase text-muted-foreground">
-                         <tr>
-                           <th scope="col" className="px-4 py-3">Unidade</th>
-                           <th scope="col" className="px-4 py-3">Endereço</th>
-                           <th scope="col" className="px-4 py-3">Situação</th>
-                           <th scope="col" className="px-4 py-3">Ações</th>
-                         </tr>
-                       </thead>
-                       <tbody className="divide-y divide-border">
-                         {unitPage?.items.map((unit) => (
-                           <tr key={unit.id}>
-                             {editingUnitId === unit.id ? (
-                               <td colSpan={4} className="p-4">
-                                 <UnitForm
-                                   caveId={caveId}
-                                   unit={unit}
-                                   onDone={() => setEditingUnitId(null)}
-                                 />
-                               </td>
-                             ) : (
-                               <>
-                                 <td className="px-4 py-3 font-semibold">{unit.name}</td>
-                                 <td className="px-4 py-3 text-muted-foreground">
-                                   <span className="block">{[unit.address, unit.neighborhood].filter(Boolean).join(' · ') || 'Endereço não informado'}</span>
-                                   <span className="text-xs">Localização: {unitLocation(unit)}</span>
-                                 </td>
-                                 <td className="px-4 py-3">
-                                   <span className={unit.active ? 'text-primary' : 'text-muted-foreground'}>
-                                     {unit.active ? 'Ativa' : 'Arquivada'}
-                                   </span>
-                                 </td>
-                                 <td className="px-4 py-3">
-                                   <div className="flex flex-wrap gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setEditingUnitId(unit.id)}
-                              >
-                                <Pencil className="size-4" aria-hidden="true" />
-                                Editar
-                              </Button>
-                              {unit.active ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="destructive"
-                                  disabled={mutations.archive.isPending}
-                                  onClick={() => void archive(unit)}
-                                >
-                                  <Trash2
-                                    className="size-4"
-                                    aria-hidden="true"
-                                  />
-                                  Arquivar
-                                </Button>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={mutations.reactivate.isPending}
-                                  onClick={() => void reactivate(unit)}
-                                >
-                                  <RotateCcw
-                                    className="size-4"
-                                    aria-hidden="true"
-                                  />
-                                  Reativar
-                                </Button>
-                              )}
-                                   </div>
-                                 </td>
-                               </>
-                             )}
-                           </tr>
-                         ))}
-                       </tbody>
-                     </table>
-                   </div>
+                  <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                    <table
+                      className="w-full min-w-[680px] text-left text-sm"
+                      aria-label="Unidades da caverna"
+                    >
+                      <thead className="border-b border-border bg-accent/40 text-xs uppercase text-muted-foreground">
+                        <tr>
+                          <th scope="col" className="px-4 py-3">
+                            Unidade
+                          </th>
+                          <th scope="col" className="px-4 py-3">
+                            Endereço
+                          </th>
+                          <th scope="col" className="px-4 py-3">
+                            Situação
+                          </th>
+                          <th scope="col" className="px-4 py-3">
+                            Ações
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {unitPage?.items.map((unit) => (
+                          <tr key={unit.id}>
+                            {editingUnitId === unit.id ? (
+                              <td colSpan={4} className="p-4">
+                                <UnitForm
+                                  caveId={caveId}
+                                  unit={unit}
+                                  onDone={() => setEditingUnitId(null)}
+                                />
+                              </td>
+                            ) : (
+                              <>
+                                <td className="px-4 py-3 font-semibold">
+                                  {unit.name}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  <span className="block">
+                                    {[unit.address, unit.neighborhood]
+                                      .filter(Boolean)
+                                      .join(' · ') || 'Endereço não informado'}
+                                  </span>
+                                  <span className="text-xs">
+                                    Localização: {unitLocation(unit)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className={
+                                      unit.active
+                                        ? 'text-primary'
+                                        : 'text-muted-foreground'
+                                    }
+                                  >
+                                    {unit.active ? 'Ativa' : 'Arquivada'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setEditingUnitId(unit.id)}
+                                    >
+                                      <Pencil
+                                        className="size-4"
+                                        aria-hidden="true"
+                                      />
+                                      Editar
+                                    </Button>
+                                    {unit.active ? (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="destructive"
+                                        disabled={mutations.archive.isPending}
+                                        onClick={() => void archive(unit)}
+                                      >
+                                        <Trash2
+                                          className="size-4"
+                                          aria-hidden="true"
+                                        />
+                                        Arquivar
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={
+                                          mutations.reactivate.isPending
+                                        }
+                                        onClick={() => void reactivate(unit)}
+                                      >
+                                        <RotateCcw
+                                          className="size-4"
+                                          aria-hidden="true"
+                                        />
+                                        Reativar
+                                      </Button>
+                                    )}
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                   <nav
                     className="mt-4 flex items-center justify-between gap-3"
                     aria-label="Paginação de unidades"

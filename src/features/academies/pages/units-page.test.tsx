@@ -159,7 +159,9 @@ it('shows active and archived units and offers reactivation', async () => {
   renderPage(caveAdminContext)
 
   expect(await screen.findByText('Unidade Ativa')).toBeInTheDocument()
-  expect(screen.getByRole('table', { name: 'Unidades da caverna' })).toBeInTheDocument()
+  expect(
+    screen.getByRole('table', { name: 'Unidades da caverna' }),
+  ).toBeInTheDocument()
   expect(screen.getByText('Unidade Arquivada')).toBeInTheDocument()
   expect(screen.getByText('Ativa')).toBeInTheDocument()
   expect(screen.getByText('Arquivada')).toBeInTheDocument()

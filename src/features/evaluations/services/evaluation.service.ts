@@ -12,14 +12,15 @@ export const EVALUATION_STATUSES = [
 export type EvaluationStatus = (typeof EVALUATION_STATUSES)[number]
 export type EvaluationFilterStatus = EvaluationStatus | 'OPEN'
 
-export const EVALUATION_STATUS_LABELS: Record<EvaluationFilterStatus, string> = {
-  OPEN: 'Em aberto (pendentes e agendadas)',
-  PENDING: 'Pendente',
-  SCHEDULED: 'Agendada',
-  APPROVED: 'Aprovada',
-  REJECTED: 'Rejeitada',
-  CANCELLED: 'Cancelada',
-}
+export const EVALUATION_STATUS_LABELS: Record<EvaluationFilterStatus, string> =
+  {
+    OPEN: 'Em aberto (pendentes e agendadas)',
+    PENDING: 'Pendente',
+    SCHEDULED: 'Agendada',
+    APPROVED: 'Aprovada',
+    REJECTED: 'Rejeitada',
+    CANCELLED: 'Cancelada',
+  }
 
 const namedSchema = z.object({ id: z.string(), name: z.string() })
 const teacherSchema = z

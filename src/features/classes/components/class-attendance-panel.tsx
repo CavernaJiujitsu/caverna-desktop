@@ -152,7 +152,9 @@ export function ClassAttendancePanel({
     queryFn: () => classLearningService.content(item.id),
     enabled: isClassTeacher && item.type === 'SCHEDULED',
   })
-  const [selectedMovements, setSelectedMovements] = useState<string[] | null>(null)
+  const [selectedMovements, setSelectedMovements] = useState<string[] | null>(
+    null,
+  )
   const [participationFor, setParticipationFor] = useState<string | null>(null)
   const list = enrollments.data ?? []
   const occupied = list.filter((e) => OCCUPYING.includes(e.status)).length
@@ -162,9 +164,13 @@ export function ClassAttendancePanel({
     try {
       await action()
       notify.success(success)
-      await queryClient.invalidateQueries({ queryKey: ['class-content', item.id] })
+      await queryClient.invalidateQueries({
+        queryKey: ['class-content', item.id],
+      })
     } catch (error) {
-      notify.error(getErrorMessage(error, 'Não foi possível salvar a avaliação.'))
+      notify.error(
+        getErrorMessage(error, 'Não foi possível salvar a avaliação.'),
+      )
     }
   }
 
@@ -243,23 +249,32 @@ export function ClassAttendancePanel({
       {isClassTeacher && item.type === 'SCHEDULED' && catalog.data && (
         <div className="mt-5 space-y-2 rounded-lg border p-4">
           <h3 className="font-semibold">Movimentos ensinados nesta aula</h3>
-          <p className="text-xs">Selecione a faixa e seus movimentos antes da chamada.</p>
+          <p className="text-xs">
+            Selecione a faixa e seus movimentos antes da chamada.
+          </p>
           {catalog.data.belts.map((belt) => {
-            const links = catalog.data.trails.find((trail) => trail.belt.id === belt.id)?.stages
-              ?.flatMap((stage) => stage.movements ?? []) ?? []
+            const links =
+              catalog.data.trails
+                .find((trail) => trail.belt.id === belt.id)
+                ?.stages?.flatMap((stage) => stage.movements ?? []) ?? []
             return (
               <fieldset key={belt.id} className="space-x-3">
                 <legend className="font-medium">{belt.name}</legend>
                 {links.map((link) => (
-                  <label key={link.id} className="inline-flex items-center gap-1">
+                  <label
+                    key={link.id}
+                    className="inline-flex items-center gap-1"
+                  >
                     <input
                       type="checkbox"
                       checked={selected.includes(link.id)}
-                      onChange={(event) => setSelectedMovements(
-                        event.target.checked
-                          ? [...selected, link.id]
-                          : selected.filter((id) => id !== link.id),
-                      )}
+                      onChange={(event) =>
+                        setSelectedMovements(
+                          event.target.checked
+                            ? [...selected, link.id]
+                            : selected.filter((id) => id !== link.id),
+                        )
+                      }
                     />
                     {link.movement.name}
                   </label>
@@ -267,10 +282,17 @@ export function ClassAttendancePanel({
               </fieldset>
             )
           })}
-          <Button type="button" onClick={() => void act(
-            () => classLearningService.replace(item.id, selected),
-            'Conteúdo da aula salvo.',
-          )}>Salvar movimentos ensinados</Button>
+          <Button
+            type="button"
+            onClick={() =>
+              void act(
+                () => classLearningService.replace(item.id, selected),
+                'Conteúdo da aula salvo.',
+              )
+            }
+          >
+            Salvar movimentos ensinados
+          </Button>
         </div>
       )}
 
@@ -357,18 +379,47 @@ export function ClassAttendancePanel({
                         Registrar participação
                       </Button>
                     )}
-                    {isClassTeacher && enrollment.status === 'CONFIRMED' && item.type === 'EXAM' && (
-                      <>
-                        <Button type="button" size="sm" onClick={() => void act(
-                          () => classLearningService.exam(item.id, enrollment.id, 'approve'),
-                          'Exame aprovado. Próxima faixa liberada.',
-                        )}>Aprovar exame</Button>
-                        <Button type="button" size="sm" variant="outline" onClick={() => void act(
-                          () => classLearningService.exam(item.id, enrollment.id, 'reject'),
-                          'Exame reprovado. Cinco novas aulas serão exigidas.',
-                        )}>Reprovar exame</Button>
-                      </>
-                    )}
+                    {isClassTeacher &&
+                      enrollment.status === 'CONFIRMED' &&
+                      item.type === 'EXAM' && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() =>
+                              void act(
+                                () =>
+                                  classLearningService.exam(
+                                    item.id,
+                                    enrollment.id,
+                                    'approve',
+                                  ),
+                                'Exame aprovado. Próxima faixa liberada.',
+                              )
+                            }
+                          >
+                            Aprovar exame
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              void act(
+                                () =>
+                                  classLearningService.exam(
+                                    item.id,
+                                    enrollment.id,
+                                    'reject',
+                                  ),
+                                'Exame reprovado. Cinco novas aulas serão exigidas.',
+                              )
+                            }
+                          >
+                            Reprovar exame
+                          </Button>
+                        </>
+                      )}
                     {CHECK_IN_ALLOWED.includes(enrollment.status) && (
                       <Button
                         type="button"
@@ -390,15 +441,35 @@ export function ClassAttendancePanel({
                     onDone={() => setParticipationFor(null)}
                   />
                 )}
-                {isClassTeacher && item.type === 'SCHEDULED' && enrollment.status === 'CONFIRMED' && (catalog.data?.trails ?? []).flatMap((trail) => trail.stages ?? [])
-                  .flatMap((stage) => stage.movements ?? [])
-                  .filter((link) => selected.includes(link.id))
-                  .map((link) => (
-                    <Button key={link.id} className="mr-2 mt-2" type="button" size="sm" variant="outline" onClick={() => void act(
-                      () => classLearningService.validate(item.id, enrollment.id, link.id),
-                      `Movimento ${link.movement.name} validado.`,
-                    )}>Confirmar que aprendeu {link.movement.name}</Button>
-                  ))}
+                {isClassTeacher &&
+                  item.type === 'SCHEDULED' &&
+                  enrollment.status === 'CONFIRMED' &&
+                  (catalog.data?.trails ?? [])
+                    .flatMap((trail) => trail.stages ?? [])
+                    .flatMap((stage) => stage.movements ?? [])
+                    .filter((link) => selected.includes(link.id))
+                    .map((link) => (
+                      <Button
+                        key={link.id}
+                        className="mr-2 mt-2"
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          void act(
+                            () =>
+                              classLearningService.validate(
+                                item.id,
+                                enrollment.id,
+                                link.id,
+                              ),
+                            `Movimento ${link.movement.name} validado.`,
+                          )
+                        }
+                      >
+                        Confirmar que aprendeu {link.movement.name}
+                      </Button>
+                    ))}
               </li>
             ))}
           </ul>

@@ -227,7 +227,9 @@ export function AddressLocator({
           />
         </label>
       </div>
-      {showMap && <MapPreview latitude={value.latitude} longitude={value.longitude} />}
+      {showMap && (
+        <MapPreview latitude={value.latitude} longitude={value.longitude} />
+      )}
       <p className="text-xs text-muted-foreground">
         Confirme endereço e coordenadas antes de salvar. Se a busca falhar,
         preencha o endereço e use as coordenadas do dispositivo ou informe ambas

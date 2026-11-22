@@ -348,30 +348,53 @@ export default function ClassesManagementPage() {
               />
             ) : (
               <div className="overflow-x-auto rounded-xl border border-border bg-card">
-                <table className="w-full min-w-[760px] text-left text-sm" aria-label="Aulas">
+                <table
+                  className="w-full min-w-[760px] text-left text-sm"
+                  aria-label="Aulas"
+                >
                   <thead className="border-b border-border bg-accent/40 text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      <th scope="col" className="px-4 py-3">Aula / data</th>
-                      <th scope="col" className="px-4 py-3">Unidade</th>
-                      <th scope="col" className="px-4 py-3">Professor</th>
-                      <th scope="col" className="px-4 py-3">Vagas</th>
-                      <th scope="col" className="px-4 py-3">Ações</th>
+                      <th scope="col" className="px-4 py-3">
+                        Aula / data
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        Unidade
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        Professor
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        Vagas
+                      </th>
+                      <th scope="col" className="px-4 py-3">
+                        Ações
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {classes.map((item) => (
                       <tr
                         key={item.id}
-                        className={selectedClassId === item.id ? 'bg-accent/60' : 'hover:bg-accent/30'}
+                        className={
+                          selectedClassId === item.id
+                            ? 'bg-accent/60'
+                            : 'hover:bg-accent/30'
+                        }
                       >
                         <td className="px-4 py-3">
-                          <span className="block font-semibold">{CLASS_TYPE_LABELS[item.type]}</span>
+                          <span className="block font-semibold">
+                            {CLASS_TYPE_LABELS[item.type]}
+                          </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatClassDate(item.startsAt)} · {formatTime(item.startsAt)}–{formatTime(item.endsAt)}
+                            {formatClassDate(item.startsAt)} ·{' '}
+                            {formatTime(item.startsAt)}–
+                            {formatTime(item.endsAt)}
                           </span>
                         </td>
                         <td className="px-4 py-3">{item.caveUnitName}</td>
-                        <td className="px-4 py-3">{scope.teacherName(item.teacherId, item.teacherName)}</td>
+                        <td className="px-4 py-3">
+                          {scope.teacherName(item.teacherId, item.teacherName)}
+                        </td>
                         <td className="px-4 py-3">
                           {item.enrolledCount === undefined
                             ? `${item.capacity} vagas`
@@ -379,21 +402,43 @@ export default function ClassesManagementPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
-                            <Button type="button" size="sm" variant="secondary" onClick={() => openClass(item.id)}>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => openClass(item.id)}
+                            >
                               <Users className="size-4" aria-hidden="true" />
                               Chamada
                             </Button>
                             {canManage(item) && (
                               <>
-                                <Button type="button" size="sm" variant="ghost" onClick={() => {
-                                  closeClass()
-                                  setEditing(item)
-                                }}>
-                                  <Pencil className="size-4" aria-hidden="true" />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    closeClass()
+                                    setEditing(item)
+                                  }}
+                                >
+                                  <Pencil
+                                    className="size-4"
+                                    aria-hidden="true"
+                                  />
                                   Editar
                                 </Button>
-                                <Button type="button" size="sm" variant="ghost" disabled={remove.isPending} onClick={() => void removeClass(item)}>
-                                  <Trash2 className="size-4" aria-hidden="true" />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={remove.isPending}
+                                  onClick={() => void removeClass(item)}
+                                >
+                                  <Trash2
+                                    className="size-4"
+                                    aria-hidden="true"
+                                  />
                                   Excluir
                                 </Button>
                               </>

@@ -75,7 +75,9 @@ export const router = createBrowserRouter([
   {
     path: routes.graduationCatalog,
     element: (
-      <ProtectedRoute allowedContextRoles={[...routeContextRoles.graduationCatalog]}>
+      <ProtectedRoute
+        allowedContextRoles={[...routeContextRoles.graduationCatalog]}
+      >
         {wrap(<CatalogPage />)}
       </ProtectedRoute>
     ),

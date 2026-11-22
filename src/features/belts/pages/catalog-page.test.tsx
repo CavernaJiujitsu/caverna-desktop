@@ -26,20 +26,26 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.list.mockResolvedValue({
     minimumPracticeClasses: 2,
-    belts: [{
-      id: 'belt',
-      name: 'Branca',
-      color: 'WHITE',
-      level: 1,
-      minimumTrainingMinutes: 60,
-      minimumTrainingClasses: 2,
-    }],
+    belts: [
+      {
+        id: 'belt',
+        name: 'Branca',
+        color: 'WHITE',
+        level: 1,
+        minimumTrainingMinutes: 60,
+        minimumTrainingClasses: 2,
+      },
+    ],
     movements: [{ id: 'movement', name: 'Rolamento', description: null }],
-    trails: [{
-      id: 'trail',
-      belt: { id: 'belt' },
-      stages: [{ id: 'stage', name: 'Fundamentos', position: 1, movements: [] }],
-    }],
+    trails: [
+      {
+        id: 'trail',
+        belt: { id: 'belt' },
+        stages: [
+          { id: 'stage', name: 'Fundamentos', position: 1, movements: [] },
+        ],
+      },
+    ],
   })
   mocks.setMinimum.mockResolvedValue(undefined)
   mocks.link.mockResolvedValue(undefined)
@@ -47,9 +53,13 @@ beforeEach(() => {
 
 function renderPage() {
   return render(
-    <QueryClientProvider client={new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    })}>
+    <QueryClientProvider
+      client={
+        new QueryClient({
+          defaultOptions: { queries: { retry: false } },
+        })
+      }
+    >
       <CatalogPage />
     </QueryClientProvider>,
   )
@@ -70,14 +80,22 @@ it('edits the universal practice minimum from the catalog screen', async () => {
 it('links a selected movement to its stage instead of assigning all movements', async () => {
   renderPage()
   const user = userEvent.setup()
-  await user.click(await screen.findByRole('button', { name: '+ Associar movimento' }))
-  const dialog = screen.getByRole('dialog', { name: 'Associar movimento a Fundamentos' })
+  await user.click(
+    await screen.findByRole('button', { name: '+ Associar movimento' }),
+  )
+  const dialog = screen.getByRole('dialog', {
+    name: 'Associar movimento a Fundamentos',
+  })
   await user.selectOptions(
     within(dialog).getByRole('combobox', { name: 'Movimento para a etapa' }),
     'movement',
   )
-  expect(within(dialog).getByRole('spinbutton', { name: 'Ordem do movimento' })).toHaveValue(1)
-  await user.click(within(dialog).getByRole('button', { name: 'Associar movimento' }))
+  expect(
+    within(dialog).getByRole('spinbutton', { name: 'Ordem do movimento' }),
+  ).toHaveValue(1)
+  await user.click(
+    within(dialog).getByRole('button', { name: 'Associar movimento' }),
+  )
   expect(mocks.link).toHaveBeenCalledWith('stage', {
     movementId: 'movement',
     position: 1,
@@ -88,13 +106,19 @@ it('links a selected movement to its stage instead of assigning all movements', 
 it('searches global movements and opens the edit dialog without filling the page with forms', async () => {
   renderPage()
   const user = userEvent.setup()
-  const search = await screen.findByRole('searchbox', { name: 'Buscar movimento' })
+  const search = await screen.findByRole('searchbox', {
+    name: 'Buscar movimento',
+  })
   await user.type(search, 'inexistente')
   expect(screen.getByText('Nenhum movimento encontrado.')).toBeInTheDocument()
   await user.clear(search)
-  await user.click(screen.getByRole('button', { name: 'Editar movimento Rolamento' }))
+  await user.click(
+    screen.getByRole('button', { name: 'Editar movimento Rolamento' }),
+  )
   const dialog = screen.getByRole('dialog', { name: 'Editar Rolamento' })
-  expect(within(dialog).getByRole('textbox', { name: 'Nome do movimento' })).toHaveValue('Rolamento')
+  expect(
+    within(dialog).getByRole('textbox', { name: 'Nome do movimento' }),
+  ).toHaveValue('Rolamento')
   await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
@@ -103,8 +127,16 @@ it('collapses and expands a belt without losing its catalog details', async () =
   renderPage()
   const user = userEvent.setup()
   await screen.findByRole('button', { name: 'Recolher faixa Branca' })
-  await user.click(screen.getByRole('button', { name: 'Recolher faixa Branca' }))
-  expect(screen.queryByRole('button', { name: '+ Associar movimento' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Expandir faixa Branca' }))
-  expect(screen.getByRole('button', { name: '+ Associar movimento' })).toBeInTheDocument()
+  await user.click(
+    screen.getByRole('button', { name: 'Recolher faixa Branca' }),
+  )
+  expect(
+    screen.queryByRole('button', { name: '+ Associar movimento' }),
+  ).not.toBeInTheDocument()
+  await user.click(
+    screen.getByRole('button', { name: 'Expandir faixa Branca' }),
+  )
+  expect(
+    screen.getByRole('button', { name: '+ Associar movimento' }),
+  ).toBeInTheDocument()
 })
