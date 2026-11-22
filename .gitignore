@@ -7,3 +7,6 @@ coverage/
 *.local
 .vite/
 *.log
+e2e/.artifacts/
+e2e/playwright-report/
+e2e/test-results/

@@ -72,3 +72,35 @@ body {
 button {
   cursor: pointer;
 }
+
+/* Scoped approximation of the management frames; final tokens await Figma access. */
+.management-surface {
+  --background: #0b0c10;
+  --foreground: #f6f6f7;
+  --card: #1d2029;
+  --card-foreground: #f6f6f7;
+  --primary: #ff6b35;
+  --primary-foreground: #111216;
+  --secondary: #262935;
+  --secondary-foreground: #f6f6f7;
+  --muted: #262935;
+  --muted-foreground: #a0a3ae;
+  --accent: #262935;
+  --accent-foreground: #f6f6f7;
+  --destructive: #ff776e;
+  --border: #30333f;
+  --input: #30333f;
+  --ring: #ff8c62;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Native select popups need their own palette in dark surfaces. */
+:is(.dark, .management-surface) select {
+  color-scheme: dark;
+}
+
+:is(.dark, .management-surface) select option {
+  background-color: var(--card);
+  color: var(--foreground);
+}

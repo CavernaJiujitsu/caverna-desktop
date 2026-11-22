@@ -2,6 +2,7 @@ export type AppErrorKind =
   | 'validation'
   | 'unauthorized'
   | 'forbidden'
+  | 'rate-limited'
   | 'not-found'
   | 'server'
   | 'network'
