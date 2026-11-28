@@ -63,6 +63,7 @@ export type ParticipationInput = {
 function toClassItem(item: z.infer<typeof apiClassSchema>): ClassItem {
   return {
     id: item.id,
+    attendanceClosedAt: item.attendanceClosedAt ?? null,
     type: item.type,
     startsAt: item.startsAt,
     endsAt: item.endsAt,

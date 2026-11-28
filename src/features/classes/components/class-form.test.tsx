@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import { ClassForm } from '@/features/classes/components/class-form'
 import type { ClassScope } from '@/features/classes/hooks/use-class-scope'
@@ -33,11 +34,11 @@ function academyScope(overrides: Partial<ClassScope> = {}): ClassScope {
 describe('ClassForm catalogs', () => {
   it('says the units failed to load instead of offering an empty choice', () => {
     render(
-      <ClassForm
+      <QueryClientProvider client={new QueryClient()}><ClassForm
         value={null}
         scope={academyScope({ unitsError: true })}
         onClose={vi.fn()}
-      />,
+      /></QueryClientProvider>,
     )
 
     const units = screen.getByLabelText('Unidade')
@@ -47,11 +48,11 @@ describe('ClassForm catalogs', () => {
 
   it('says the teachers failed to load instead of "Nenhum professor"', () => {
     render(
-      <ClassForm
+      <QueryClientProvider client={new QueryClient()}><ClassForm
         value={null}
         scope={academyScope({ teachersError: true })}
         onClose={vi.fn()}
-      />,
+      /></QueryClientProvider>,
     )
 
     const teachers = screen.getByLabelText('Professor')

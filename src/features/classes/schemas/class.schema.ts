@@ -42,6 +42,7 @@ export const TEACHER_NAME_FALLBACK = 'Professor não informado'
 /** Raw class returned by GET /classes and GET /classes/:id. */
 export const apiClassSchema = z.object({
   id: z.string(),
+  attendanceClosedAt: z.string().nullish(),
   type: z.enum(CLASS_TYPES),
   startsAt: z.string(),
   endsAt: z.string(),
@@ -63,6 +64,7 @@ export const apiClassSchema = z.object({
 /** Class shape consumed by the UI. */
 export type ClassItem = {
   id: string
+  attendanceClosedAt?: string | null
   type: ClassType
   startsAt: string
   endsAt: string
