@@ -1,5 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LoaderCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { catalogService } from '@/features/belts/services/catalog.service'
+import { classLearningService } from '@/features/classes/services/class-learning.service'
+import { classService } from '@/features/classes/services/class.service'
 import { useForm, useWatch } from 'react-hook-form'
 import { useBelts } from '@/features/belts/hooks/use-belts'
 import { useClassMutations } from '@/features/classes/hooks/use-classes'
@@ -19,6 +24,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { getErrorMessage } from '@/shared/lib/error-message'
 import { notify } from '@/shared/lib/notifications'
+import { normalizeHttpError } from '@/shared/lib/axios'
 
 const selectClassName =
   'h-10 rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50'
@@ -58,7 +64,13 @@ type ClassFormProps = {
 
 export function ClassForm({ value, scope, onClose }: ClassFormProps) {
   const { save } = useClassMutations()
+  const queryClient = useQueryClient()
   const belts = useBelts()
+  const catalog = useQuery({ queryKey: ['graduation-catalog'], queryFn: catalogService.list, enabled: scope.isTeacher })
+  const content = useQuery({ queryKey: ['class-content', value?.id], queryFn: () => classLearningService.content(value!.id), enabled: scope.isTeacher && Boolean(value) })
+  const [movements, setMovements] = useState<string[] | null>(null)
+  const selectedMovements = movements ?? content.data ?? []
+  const [createdId, setCreatedId] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -71,6 +83,7 @@ export function ClassForm({ value, scope, onClose }: ClassFormProps) {
   })
   const selectedBelts = useWatch({ control, name: 'beltIds' })
   const selectedUnitId = useWatch({ control, name: 'caveUnitId' })
+  const selectedType = useWatch({ control, name: 'type' })
   // Only teachers linked to the chosen unit can teach there.
   const unitTeachers = selectedUnitId
     ? scope.teachers.filter((teacher) =>
@@ -89,15 +102,21 @@ export function ClassForm({ value, scope, onClose }: ClassFormProps) {
 
   async function submit(values: ClassFormValues) {
     try {
-      await save.mutateAsync({
-        id: value?.id,
-        values,
-        previousTeacherId: value?.teacherId,
-      })
+      if (scope.isTeacher && values.type === 'SCHEDULED' && (catalog.isPending || catalog.isError || (value && (content.isPending || content.isError)))) throw new Error('Não foi possível carregar os movimentos.')
+      let id = value?.id ?? createdId
+      if (!id) {
+        const created = await classService.create(values)
+        id = created.id
+        setCreatedId(id)
+      } else {
+        await save.mutateAsync({ id, values, previousTeacherId: value?.teacherId })
+      }
+      if (scope.isTeacher && values.type === 'SCHEDULED' && (!value || [...selectedMovements].sort().join() !== [...(content.data ?? [])].sort().join())) await classLearningService.replace(id, selectedMovements)
+      await queryClient.invalidateQueries({ queryKey: ['classes'] })
       notify.success(value ? 'Aula atualizada.' : 'Aula criada.')
       onClose()
     } catch (error) {
-      notify.error(getErrorMessage(error, 'Não foi possível salvar a aula.'))
+      notify.error(getErrorMessage(normalizeHttpError(error), 'Não foi possível salvar a aula.'))
     }
   }
 
@@ -310,6 +329,14 @@ export function ClassForm({ value, scope, onClose }: ClassFormProps) {
           )}
         </fieldset>
 
+        {scope.isTeacher && selectedType === 'SCHEDULED' && <fieldset>
+          <legend className="text-sm font-medium">Movimentos ensinados por faixa</legend>
+          {(catalog.isError || content.isError) && <p>Não foi possível carregar os movimentos.</p>}
+          {catalog.data?.belts.map((belt) => <div key={belt.id}>
+            <p>{belt.name}</p>
+            {(catalog.data.trails.find((trail) => trail.belt.id === belt.id)?.stages ?? []).flatMap((stage) => stage.movements ?? []).map((link) => <label key={link.id} className="inline-flex items-center gap-1 mr-3"><input type="checkbox" checked={selectedMovements.includes(link.id)} onChange={(event) => setMovements(event.target.checked ? [...selectedMovements, link.id] : selectedMovements.filter((id) => id !== link.id))} />{link.movement.name}</label>)}
+          </div>)}
+        </fieldset>}
         <div className="flex flex-wrap justify-end gap-3">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancelar

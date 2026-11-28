@@ -34,6 +34,7 @@ import { getErrorMessage } from '@/shared/lib/error-message'
 import { notify } from '@/shared/lib/notifications'
 import { catalogService } from '@/features/belts/services/catalog.service'
 import { classLearningService } from '@/features/classes/services/class-learning.service'
+import { normalizeHttpError } from '@/shared/lib/axios'
 
 const OCCUPYING: EnrollmentStatus[] = ['PENDING', 'IN_PROGRESS', 'CONFIRMED']
 const CHECK_IN_ALLOWED: EnrollmentStatus[] = ['PENDING', 'IN_PROGRESS']
@@ -110,7 +111,7 @@ function ParticipationForm({
         </label>
       </div>
       <label className="grid gap-1 text-xs font-medium">
-        Motivo (obrigatório ao corrigir um registro)
+        Motivo (opcional)
         <Input {...register('reason')} />
       </label>
       <div className="flex justify-end gap-2">
@@ -131,6 +132,22 @@ type ClassAttendancePanelProps = {
   /** Check-in and participation are reserved to the class teacher. */
   isClassTeacher: boolean
   onClose: () => void
+}
+
+function EnrollmentMovements({ classId, enrollmentId, closed }: { classId: string; enrollmentId: string; closed: boolean }) {
+  const query = useQuery({ queryKey: ['enrollment-movements', classId, enrollmentId], queryFn: () => classLearningService.enrollmentMovements(classId, enrollmentId) })
+  const [pending, setPending] = useState<string | null>(null)
+  async function validate(id: string) {
+    setPending(id)
+    try {
+      await classLearningService.validate(classId, enrollmentId, id)
+      await query.refetch()
+      notify.success('Movimento validado.')
+    } catch (error) { notify.error(getErrorMessage(normalizeHttpError(error), 'Não foi possível validar o movimento.')) }
+    finally { setPending(null) }
+  }
+  if (query.isError) return <p>Não foi possível carregar os movimentos do aluno.</p>
+  return <div>{query.data?.map((movement) => <Button key={movement.id} className="mr-2 mt-2" type="button" size="sm" variant={movement.status === 'VALIDATED' ? 'default' : 'outline'} aria-pressed={movement.status === 'VALIDATED'} disabled={closed || pending !== null} onClick={() => { if (movement.status !== 'VALIDATED') void validate(movement.id) }}><span aria-hidden="true" style={{ backgroundColor: movement.belt.color }} className="mr-1 inline-block size-3 rounded-full border" />{movement.name} · {movement.belt.name}</Button>)}</div>
 }
 
 export function ClassAttendancePanel({
@@ -156,6 +173,7 @@ export function ClassAttendancePanel({
     null,
   )
   const [participationFor, setParticipationFor] = useState<string | null>(null)
+  const [closed, setClosed] = useState(Boolean(item.attendanceClosedAt))
   const list = enrollments.data ?? []
   const occupied = list.filter((e) => OCCUPYING.includes(e.status)).length
   const selected = selectedMovements ?? taught.data ?? []
@@ -167,9 +185,10 @@ export function ClassAttendancePanel({
       await queryClient.invalidateQueries({
         queryKey: ['class-content', item.id],
       })
+      await queryClient.invalidateQueries({ queryKey: ['enrollment-movements', item.id] })
     } catch (error) {
       notify.error(
-        getErrorMessage(error, 'Não foi possível salvar a avaliação.'),
+        getErrorMessage(normalizeHttpError(error), 'Não foi possível salvar o conteúdo da aula.'),
       )
     }
   }
@@ -245,8 +264,9 @@ export function ClassAttendancePanel({
           </span>
         </p>
       </div>
+      {isClassTeacher && <Button type="button" disabled={closed} onClick={() => void act(async () => { await classLearningService.closeAttendance(item.id); setClosed(true); await queryClient.invalidateQueries({ queryKey: ['classes'] }) }, 'Chamada finalizada.')}>{closed ? 'Chamada finalizada' : 'Finalizar chamada'}</Button>}
 
-      {isClassTeacher && item.type === 'SCHEDULED' && catalog.data && (
+      {isClassTeacher && !closed && item.type === 'SCHEDULED' && catalog.data && (
         <div className="mt-5 space-y-2 rounded-lg border p-4">
           <h3 className="font-semibold">Movimentos ensinados nesta aula</h3>
           <p className="text-xs">
@@ -296,7 +316,7 @@ export function ClassAttendancePanel({
         </div>
       )}
 
-      <div className="mt-5">
+      {!closed && <div className="mt-5">
         <PractitionerPicker
           label="Inscrever aluno"
           actionLabel="Inscrever"
@@ -305,7 +325,7 @@ export function ClassAttendancePanel({
             void enroll(practitioner.id, practitioner.user.name)
           }
         />
-      </div>
+      </div>}
 
       {!isClassTeacher && (
         <p className="mt-4 text-xs text-muted-foreground">
@@ -358,7 +378,7 @@ export function ClassAttendancePanel({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {isClassTeacher &&
-                      CHECK_IN_ALLOWED.includes(enrollment.status) && (
+                      !closed && CHECK_IN_ALLOWED.includes(enrollment.status) && (
                         <Button
                           type="button"
                           size="sm"
@@ -420,7 +440,7 @@ export function ClassAttendancePanel({
                           </Button>
                         </>
                       )}
-                    {CHECK_IN_ALLOWED.includes(enrollment.status) && (
+                    {!closed && CHECK_IN_ALLOWED.includes(enrollment.status) && (
                       <Button
                         type="button"
                         size="sm"
@@ -441,35 +461,7 @@ export function ClassAttendancePanel({
                     onDone={() => setParticipationFor(null)}
                   />
                 )}
-                {isClassTeacher &&
-                  item.type === 'SCHEDULED' &&
-                  enrollment.status === 'CONFIRMED' &&
-                  (catalog.data?.trails ?? [])
-                    .flatMap((trail) => trail.stages ?? [])
-                    .flatMap((stage) => stage.movements ?? [])
-                    .filter((link) => selected.includes(link.id))
-                    .map((link) => (
-                      <Button
-                        key={link.id}
-                        className="mr-2 mt-2"
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          void act(
-                            () =>
-                              classLearningService.validate(
-                                item.id,
-                                enrollment.id,
-                                link.id,
-                              ),
-                            `Movimento ${link.movement.name} validado.`,
-                          )
-                        }
-                      >
-                        Confirmar que aprendeu {link.movement.name}
-                      </Button>
-                    ))}
+                {isClassTeacher && item.type === 'SCHEDULED' && enrollment.status === 'CONFIRMED' && <EnrollmentMovements classId={item.id} enrollmentId={enrollment.id} closed={closed} />}
               </li>
             ))}
           </ul>

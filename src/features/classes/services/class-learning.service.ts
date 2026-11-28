@@ -7,6 +7,13 @@ const taught = z.object({
 })
 
 export const classLearningService = {
+  async enrollmentMovements(classId: string, enrollmentId: string) {
+    const { data } = await http.get<unknown>(`/classes/${classId}/enrollments/${enrollmentId}/movements`)
+    return envelopeSchema(z.array(z.object({ id: z.string().uuid(), name: z.string(), status: z.string(), belt: z.object({ id: z.string().uuid(), name: z.string(), color: z.string() }) }))).parse(data).data
+  },
+  async closeAttendance(classId: string) {
+    await http.post(`/classes/${classId}/attendance/close`)
+  },
   async content(classId: string): Promise<string[]> {
     const { data } = await http.get<unknown>(`/classes/${classId}/content`)
     return envelopeSchema(z.array(taught))
